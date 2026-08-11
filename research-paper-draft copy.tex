@@ -1,0 +1,154 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{url}
+
+\title{Evidence-Based Draft: A Post-Quantum Secure Tunnel for MAVLink Telemetry with Runtime AEAD and Scheduler Integration}
+\author{Repository-Derived Technical Draft}
+\date{March 16, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This draft reconstructs the architecture, implementation, and measured behavior of the secure-tunnel repository from verified code, benchmark artifacts, and protocol documentation only. The system implements a post-quantum secure tunnel for UAV telemetry in which a PQC handshake establishes transport keys, an AEAD-protected UDP data plane carries MAVLink traffic, and a scheduler layer evaluates controlled runtime transitions without changing frozen protocol semantics. The draft explains the protocol and implementation with direct file and function references, summarizes the benchmark methodology used in primitive, localhost, and MAVLink end-to-end campaigns, and records the main measured results, including a single confirmed post-rekey anomaly affecting the \texttt{aesgcm128} MAVLink run. The protocol baseline is frozen at \texttt{PROTOCOL\_VERSION = 1.0} and all findings in this draft are tied to that baseline.
+\end{abstract}
+
+\section{System Motivation and UAV Telemetry Context}
+Unmanned aerial vehicle telemetry links carry command, state, and health information that must remain available and authenticated under constrained compute budgets. In this repository the target application is MAVLink telemetry transported through a secure tunnel that preserves a fixed protocol core while permitting scheduler-layer experimentation. The protocol baseline is explicitly frozen in \texttt{context/secure\_tunnel\_protocol\_spec.md} and \texttt{reports/CORE\_FREEZE\_EXPERIMENTAL\_BASELINE\_20260316.md}. Those documents define the invariants that may not change during experiments: handshake message sequence, AEAD packet format, nonce construction, replay window behavior, rekey lifecycle, control-plane semantics, and suite registry structure.
+
+The code and artifacts indicate a design goal that is more specific than generic link encryption. The tunnel is intended to secure bidirectional MAVLink transport between a drone-side companion computer and a GCS-side operator stack while keeping end-to-end telemetry continuity measurable. The central engineering question throughout the repository is not only whether PQC primitives function correctly, but whether they can be integrated into a real telemetry path with acceptable round-trip latency, bounded rekey disruption, and controllable runtime adaptation.
+
+\section{System Architecture}
+\subsection{High-Level Roles and Channels}
+The authoritative protocol description identifies two roles: the drone acts as the client for the TCP handshake and the GCS acts as the server. This is visible in the implementation and the extracted protocol specification. The data plane is encrypted UDP, while the handshake and a separate control plane use TCP. In code, transport setup is concentrated in \texttt{core/async\_proxy.py}; the control server is implemented in \texttt{core/control\_tcp.py}; and the protocol state machine for rekey coordination is implemented in \texttt{core/policy\_engine.py}.
+
+The repository therefore implements three interacting planes:
+\begin{enumerate}[leftmargin=*]
+\item A handshake plane that performs PQC key establishment and confirmation.
+\item A data plane that protects MAVLink datagrams with AEAD framing and replay protection.
+\item A control plane that coordinates rekeys and scheduler-triggered transitions.
+\end{enumerate}
+
+The proxy pipeline reconstructed from \texttt{core/async\_proxy.py} is: MAVProxy plaintext ingress, AEAD encryption, UDP transmission, AEAD decryption, control/data demultiplexing, and plaintext egress back into MAVProxy. The pipeline is not a synthetic crypto microbenchmark; it includes socket handling, peer validation, buffer draining, and control-message interaction, all of which matter when interpreting measured RTT.
+
+\subsection{Frozen Baseline and Experimental Governance}
+The freeze record in \texttt{reports/CORE\_FREEZE\_EXPERIMENTAL\_BASELINE\_20260316.md} states that experiments must operate on the frozen core implementation. That decision is crucial for interpreting the benchmark series. Primitive benchmarking, localhost tunnel validation, hardware deployment measurements, and scheduler evaluation were all meant to occur without modifying the transport semantics. As a result, scheduler experiments are explicitly a layer above protocol behavior rather than a rewrite of it.
+
+\section{Protocol Design and Handshake Mechanism}
+\subsection{Handshake Structure}
+The handshake is implemented in \texttt{core/handshake.py}. The principal entry points are \texttt{server\_gcs\_handshake()} and \texttt{client\_drone\_handshake()}, while message parsing and transcript construction are handled by helper functions such as \texttt{\_parse\_server\_hello\_wire()} and \texttt{\_build\_server\_transcript()}. The server hello encoding is implemented directly in the file and matches the extracted protocol spec: version, KEM name length and bytes, signature name length and bytes, a 16-byte session identifier, a 16-byte challenge, the server KEM public key length and bytes, and the signature length and bytes.
+
+The server transcript binds version, a protocol label, session identifier, KEM name, signature name, KEM public key, and challenge. The client verifies that transcript signature and additionally checks that the negotiated KEM and signature names match the expected suite. Those checks are the repository's downgrade barrier and are part of the frozen behavior. Once encapsulation and decapsulation succeed, \texttt{derive\_transport\_material()} derives 128 bytes of output keying material, split into directional transport keys and two key-confirmation values.
+
+\subsection{Key Derivation and Confirmation}
+The KDF in \texttt{derive\_transport\_material()} uses HKDF-SHA256 from the \texttt{cryptography} package. Its inputs are the KEM shared secret, the 16-byte session identifier, the 16-byte challenge, algorithm names, a PSK-derived digest, and the epoch value. The \texttt{info} field binds protocol and algorithm context, while the \texttt{salt} includes a PSK-derived component. The code therefore combines post-quantum shared secret material with pre-shared-key binding and explicit epoch context. Key confirmation uses HMAC-SHA256 over a transcript that includes the hello wire image and the KEM ciphertext. This is consistent with using HKDF as described by RFC 5869 and HMAC as described by RFC 2104.
+
+\subsection{Suite Registry}
+Suite metadata are managed in \texttt{core/suites.py}. The repository maintains a larger canonical registry, while the operational baseline highlighted in multiple reports repeatedly uses three runtime-allowed representative suites: \texttt{cs-mlkem512-mldsa44}, \texttt{cs-mlkem768-mldsa65}, and \texttt{cs-mlkem1024-mldsa87}. These correspond to NIST levels L1, L3, and L5 and are the pairings that appear in the measured localhost and MAVLink campaigns.
+
+\section{AEAD Data Plane, Packet Framing, and Replay Protection}
+\subsection{Wire Format}
+The authenticated UDP framing is implemented in \texttt{core/aead.py}. The fixed header layout is defined by \texttt{HEADER\_STRUCT = !BBBBB\{SESSION\_ID\_LEN\}sQB}. That layout carries wire version, KEM identifier, KEM parameter, signature identifier, signature parameter, the 16-byte session identifier, a 64-bit sequence number, and a one-byte epoch. The sender constructs this header in \texttt{Sender.pack\_header()}, then uses it as AEAD associated data in \texttt{Sender.encrypt()}.
+
+The on-wire format is header followed by ciphertext plus tag. The IV is not transmitted. This choice reduces packet overhead but makes local state correctness essential, because both sender and receiver must reconstruct the same nonce from epoch and sequence.
+
+\subsection{Nonce Construction}
+Nonce construction is fixed by \texttt{\_build\_nonce()} in \texttt{core/aead.py}. The canonical base is one byte of epoch followed by an 11-byte big-endian sequence number. For 12-byte nonce algorithms such as AES-GCM, AES-CCM, and ChaCha20-Poly1305, the base is used directly. For algorithms with longer nonce requirements, such as Ascon variants in this code path, the base is zero-padded. Because this nonce construction is part of the freeze baseline, experiments are not allowed to change it.
+
+\subsection{AEAD Algorithm Support}
+The file \texttt{core/aead.py} supports \texttt{aesgcm128}, \texttt{aesgcm192}, \texttt{aesgcm256}, \texttt{aesccm128}, \texttt{aesccm192}, \texttt{aesccm256}, \texttt{chacha20poly1305}, \texttt{ascon128}, and \texttt{ascon128a}. Required key lengths are enforced by \texttt{required\_key\_length\_for\_aead()}. The support matrix used in the end-to-end benchmark campaign is slightly narrower than the full implementation space, but it still spans all three NIST levels and both AES- and non-AES-based AEAD families.
+
+\subsection{Replay Protection}
+Replay protection is implemented by the \texttt{Receiver} class in \texttt{core/aead.py}. The code splits replay handling into \texttt{\_check\_replay()} and \texttt{\_commit\_replay()}. The first performs a tentative acceptance test before decryption and rejects obvious duplicates or packets outside the replay window. The second advances the replay window only after authentication succeeds. This split-phase model is important because it prevents a forged high-sequence packet from shifting the replay window before the tag has been verified. The code comments and structure align with the logic described in RFC 6479 and with the general class of sliding-window anti-replay systems used in packet protocols.
+
+\section{Rekey Lifecycle and State Machine}
+The rekey control logic is implemented in \texttt{core/policy\_engine.py} and integrated into the data-plane loop in \texttt{core/async\_proxy.py}. The protocol specification and the freeze document define a lifecycle of prepare, commit, and activate. The data-plane path recognizes control messages by a packet-type prefix and routes them into \texttt{handle\_control()}. The resulting actions may trigger staged key installation or a rekey worker launch.
+
+Soft transition support is visible in \texttt{core/async\_proxy.py} through previous-receiver fallback and grace-window logic. During rekey, packets may still be accepted by the previous receiver if they are in flight and the grace window remains open. This design is central to interpreting the MAVLink anomaly reported later: all successful AEADs cross the transition with essentially full continuity, and the \texttt{aesgcm128} anomaly appears only after the overlap window, not during it.
+
+\section{Integration with MAVProxy and MAVLink Telemetry}
+Integration with MAVProxy is implemented in the scheduler and benchmark orchestration layers. On the GCS side, \texttt{sscheduler/sgcs.py} starts a persistent MAVProxy process that forwards plaintext tunnel output to QGroundControl and to a local telemetry sniffer. On the drone side, \texttt{sscheduler/sdrone.py} and \texttt{sscheduler/sdrone\_bench.py} coordinate proxy startup, suite switching, and metric collection. The result is an experimental path in which cryptographic events are observable through a realistic MAVLink pipeline rather than through isolated packet generators alone.
+
+Telemetry batching is performed by the \texttt{TelemetrySender} class in \texttt{sscheduler/sgcs.py}. That component buffers GCS-side observations into UDP batch envelopes, which the drone scheduler uses to assemble a \texttt{DecisionInput}. This makes the scheduler layer depend on actual link observations such as packet gaps and blackout counts rather than only on static suite labels.
+
+\section{Implementation Architecture of the Codebase}
+The repository structure naturally separates concerns:
+\begin{enumerate}[leftmargin=*]
+\item \texttt{core/}: protocol, cryptography, async proxy pipeline, control-plane logic, suite registry, and metrics.
+\item \texttt{sscheduler/}: operational scheduler, benchmark scheduler, GCS follower, telemetry windowing, proxy managers, and policy logic.
+\item \texttt{bench/}: primitive benchmarking harnesses.
+\item \texttt{tools/}: additional benchmark utilities and post-processing scripts.
+\item Artifact directories such as \texttt{drone-e2e-report/}, \texttt{gcs-e2e-report/}, and \texttt{mavlink-benchmark-report/}: measured outputs and derived summaries.
+\end{enumerate}
+
+The most relevant implementation functions for the architecture described in this draft are:
+\begin{itemize}[leftmargin=*]
+\item \texttt{core/handshake.py}: \texttt{server\_gcs\_handshake()}, \texttt{client\_drone\_handshake()}, \texttt{derive\_transport\_material()}, \texttt{derive\_aead\_ratchet()}.
+\item \texttt{core/aead.py}: \texttt{Sender.encrypt()}, \texttt{Receiver.decrypt()}, \texttt{\_build\_nonce()}, \texttt{\_check\_replay()}, \texttt{\_commit\_replay()}.
+\item \texttt{core/async\_proxy.py}: batch-drain plaintext ingress, encrypted datagram receive/decrypt path, control-message demultiplexing, and graceful rekey transition logic.
+\item \texttt{sscheduler/policy.py}: \texttt{TelemetryAwarePolicyV2.evaluate()}, \texttt{EnergyAwarePolicy.evaluate()}, \texttt{AeadCostProfile.update()}.
+\item \texttt{sscheduler/sdrone.py}: \texttt{MavTunnelScheduler.\_build\_decision\_input()}, \texttt{\_run\_intelligent()}, \texttt{\_run\_energy\_aware()}, and \texttt{\_switch\_suite()}.
+\item \texttt{sscheduler/benchmark\_policy.py}: deterministic suite cycling via \texttt{BenchmarkPolicy.evaluate()}.
+\end{itemize}
+
+\section{Benchmark Methodology and Experimental Setup}
+\subsection{Primitive Benchmarks}
+The script \texttt{bench/benchmark\_pqc.py} is a measurement-only harness. It states its own design rules directly in the file header: 200 iterations per measurement, no warm-up discard, optional INA219 power monitoring, optional Linux performance counters, and raw-plus-summary output. The script covers KEM key generation, encapsulation, and decapsulation; signature key generation, sign, and verify; AEAD encrypt and decrypt at payload sizes 64, 256, 1024, and 4096 bytes; and full-suite measurements.
+
+\subsection{Localhost Tunnel Benchmarks}
+The localhost reports provide a baseline before hardware deployment. The benchmark summary in \texttt{drone-e2e-report/benchmark-summary.md} reports 5000 packets, zero timeouts, and mean RTT of 818.63 microseconds for the validated localhost E2E run. The corresponding environment report shows Linux 6.12.47, Python 3.11.2, OpenSSL 3.0.17, and a Raspberry Pi benchmark host named \texttt{uavpi}. The repository therefore treats localhost E2E as a controlled baseline that still exercises the proxy and handshake path.
+
+\subsection{MAVLink End-to-End Campaign}
+The MAVLink benchmark campaign is represented by \texttt{mavlink-benchmark-report/}. The artifact set includes raw logs, extracted metrics, latency summaries, heartbeat continuity, rekey event tables, and per-AEAD status files. The campaign evaluates eight AEAD variants across three representative security levels and focuses on four phases: heartbeat continuity, ping RTT burst, high-rate stress, and long rekey continuity centered at approximately 300 seconds. The freeze baseline and anomaly report make clear that these runs were conducted without altering the frozen protocol semantics.
+
+\subsection{Hardware Environment}
+The environment summary in \texttt{mavlink-benchmark-report/environment.md} identifies the benchmark host as a Raspberry Pi 4 Model B Rev 1.5 with four CPU cores, Linux 6.12.47, Python 3.11.2, and a measured CPU temperature of 53.6 degrees Celsius at capture time. This matters because the repository's own scheduler policy uses measured ARM cost profiles, and the observed AEAD ordering is explicitly interpreted in that hardware context rather than in an x86 host with AES acceleration.
+
+\section{Primitive and Localhost Results}
+The primitive benchmarking layer and the scheduler seed tables in \texttt{sscheduler/policy.py} jointly indicate the main asymmetry of the platform: on this ARM environment, ChaCha20-Poly1305 and AES-GCM are relatively close in per-packet cost, while Ascon is much more expensive in software. The benchmark-seeded table in \texttt{sscheduler/policy.py} records representative per-packet measurements of about 63.5 microseconds encrypt and 70.7 microseconds decrypt for ChaCha20-Poly1305, about 66.9 and 73.6 microseconds for AES-GCM, and much higher values for Ascon. These are not paper-only assumptions; the scheduler uses them to initialize runtime cost profiles.
+
+The localhost E2E summary shows that the tunnel stack can sustain full packet delivery under controlled conditions. That baseline is important because it isolates the later MAVLink results from simple handshake breakage or total tunnel failure. In other words, the system is demonstrably functional before the more complex MAVProxy-driven campaign is considered.
+
+\section{MAVLink Benchmark Results}
+\subsection{Latency Comparison Across AEADs}
+The extracted metric file \texttt{mavlink-benchmark-report/aead-metrics-extracted.json} reports the following mean RTT values in microseconds for the ping burst phase: \texttt{aesccm128} 707.13, \texttt{aesgcm128} 768.06, \texttt{ascon128} 794.85, \texttt{aesccm192} 743.98, \texttt{aesgcm192} 712.91, \texttt{aesccm256} 813.74, \texttt{aesgcm256} 698.15, and \texttt{chacha20poly1305} 668.74. The same artifact provides median, P95, P99, and packet-loss summaries.
+
+Two conclusions are directly supported by the artifacts. First, the NIST level is not the sole determinant of RTT, because the L5 \texttt{chacha20poly1305} run is the fastest in mean RTT while the L1 \texttt{ascon128} and \texttt{aesgcm128} runs are slower. Second, crypto cost is visible but not dominant. The anomaly report and forensic extractions estimate that a stable AEAD's round-trip crypto component is roughly 160 to 240 microseconds, leaving a residual pipeline cost on the order of 500 to 620 microseconds. That residual includes proxying, buffering, user-space scheduling, and MAVProxy pipeline effects.
+
+\subsection{Rekey Continuity}
+The rekey event tables show that seven of the eight AEAD runs maintained 100\% delivery before, during, and after the rekey window. Reconstructed status counters place the stable rekey durations at roughly 20 milliseconds with blackout spikes near 1 millisecond. This is strong evidence that the protocol's prepare-commit-activate design and previous-receiver grace window work correctly in the general case.
+
+\section{Scheduler Policy Architecture and Measured Implications}
+Although the scheduler layer is not the primary subject of the transport protocol, it is central to the repository's experimental logic. Three policy types are implemented. \texttt{TelemetryAwarePolicyV2.evaluate()} applies a conservative gate sequence based on telemetry freshness, emergency thresholds, blackout rollback, cooldown, persistent link degradation, thermal or battery stress, proactive rekey, and finally conservative upgrade. \texttt{BenchmarkPolicy.evaluate()} is intentionally simpler and cycles suites on a nominal interval for artifact generation. \texttt{EnergyAwarePolicy.evaluate()} implements a three-axis design in which AEAD choice, NIST level, and detector level are modeled as separate but constrained control axes.
+
+The scheduler documentation that can be justified from code and measured artifacts is narrower than a full deployment claim. What can be stated confidently is that the implementation already uses measured AEAD seed profiles, packet-gap telemetry, CPU and thermal observations, and rekey budgets as decision inputs. It is also justified to state that the benchmark evidence supports ranking AEADs differently on ARM than one might on hardware with AES acceleration, because the repository's own seed table and RTT artifacts show that ChaCha20-Poly1305 is highly competitive on the measured platform.
+
+\section{Limitations and Anomaly Observations}
+The most important measured limitation is the \texttt{aesgcm128} anomaly in the MAVLink campaign. The extracted metrics show 100\% delivery before rekey, 100\% delivery during the rekey overlap window, and only 14.81\% delivery after rekey. The raw counters imply a loss of 12,566 packets in the post-window interval. The anomaly investigation report demonstrates that all other seven AEADs recovered fully, including the other two AES-GCM variants and two other L1 runs. This isolates the failure to a specific AEAD campaign instance rather than to a general level mismatch or a universal rekey defect.
+
+At the same time, the anomaly investigation also establishes an evidence boundary: the final runtime status files for \texttt{aesgcm128} did not preserve the counters needed to prove whether the rejection cause was epoch mismatch, replay rejection, or authentication failure. The most evidence-supported statement is therefore that the failure is consistent with a post-commit epoch-state divergence after the grace window expires, but the exact counter-level mechanism cannot be proven from the saved artifacts.
+
+Other limitations are simpler. The benchmark summaries often record \texttt{liboqs} and OQS Python version information as unknown. The MAVLink environment reports identify the hardware and runtime but do not fully pin the cryptographic library versions used for every run. That weakens exact reproducibility even when the protocol semantics are frozen.
+
+\section{Conclusion}
+The repository implements a coherent post-quantum secure tunnel whose protocol semantics are documented and frozen at version 1.0. Verified code paths show a clear separation between handshake, encrypted data plane, and rekey control logic, while scheduler components add runtime decision capability without changing the frozen transport format. The benchmark artifacts show that the tunnel is operational on Raspberry Pi-class hardware, that end-to-end RTT is shaped more by the full packet pipeline than by raw primitive timing alone, and that most AEADs preserve continuity across rekey. The main unresolved issue is the \texttt{aesgcm128} post-rekey collapse in the MAVLink dataset, which is confirmed as real but not fully explained because the final runtime counters needed for definitive attribution were not preserved.
+
+\section*{Authoritative References}
+\begin{enumerate}[leftmargin=*]
+\item H. Krawczyk and P. Eronen, ``HMAC-based Extract-and-Expand Key Derivation Function (HKDF),'' RFC 5869, May 2010. \url{https://www.rfc-editor.org/rfc/rfc5869}
+\item X. Zhang and T. Tsou, ``IPsec Anti-Replay Algorithm without Bit Shifting,'' RFC 6479, January 2012. \url{https://www.rfc-editor.org/rfc/rfc6479}
+\item National Institute of Standards and Technology, ``FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism Standard,'' August 13, 2024. \url{https://csrc.nist.gov/pubs/fips/203/final}
+\item National Institute of Standards and Technology, ``FIPS 204: Module-Lattice-Based Digital Signature Standard,'' August 13, 2024. \url{https://csrc.nist.gov/pubs/fips/204/final}
+\item Open Quantum Safe, ``liboqs,'' accessed March 16, 2026. \url{https://openquantumsafe.org/liboqs/}
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,644 @@
+% ================================================================
+%  Section VII-A: KEM Primitive Evaluation
+%  Data: v2-1.8ghz/raw_data/raw/kem/*.json — 100 iterations
+%  Platform: RPi4 @ 1.8 GHz, INA219 1 kHz sampling
+% ================================================================
+
+\subsection{KEM Primitive Evaluation}\label{sec:kem}
+
+We evaluate nine post-quantum key encapsulation mechanisms spanning
+three families---lattice-based (ML-KEM-512/768/1024), code-based
+Hamming quasi-cyclic (HQC-128/192/256), and code-based Goppa
+(Classic McEliece-348864/460896/6960119)---across NIST security
+levels~1, 3, and~5.  Each algorithm executes 100 iterations on the
+RPi4 testbed (ARM Cortex-A72 @ \mbox{1.8\,GHz}) with board-level
+energy captured via INA219 at \mbox{1\,kHz}.
+Table~\ref{tab:kem_full} presents the complete benchmark; the
+$\rho$~column normalises total cycle time to ML-KEM at the same
+NIST level.
+
+%% ---------------------------------------------------------------
+%%  TABLE: Comprehensive KEM Benchmark
+%% ---------------------------------------------------------------
+\begin{table*}[t]
+\centering
+\caption{Comprehensive KEM primitive benchmark on RPi4 (100 iterations, INA219 1\,kHz).
+  ML-KEM completes a full keygen--encaps--decaps cycle in $<$0.72\,ms
+  and $<$2.5\,mJ at every NIST level; alternatives are 255--12\,823$\times$ slower.}
+\label{tab:kem_full}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}ll rrr r rrr r rrr r c@{}}
+\toprule
+& & \multicolumn{3}{c}{\textbf{Latency (ms)}}
+& \textbf{$T_\text{tot}$}
+& \multicolumn{3}{c}{\textbf{Energy ($\boldsymbol{\mu}$J)}}
+& \textbf{$E_\text{tot}$}
+& \multicolumn{3}{c}{\textbf{Size (B)}}
+& \textbf{$\boldsymbol{\rho}$}
+& \textbf{UAV} \\
+\cmidrule(lr){3-5}\cmidrule(lr){7-9}\cmidrule(lr){11-13}
+\textbf{Algorithm} & \textbf{L}
+ & \textbf{Kg} & \textbf{Enc} & \textbf{Dec}
+ & \textbf{(ms)}
+ & \textbf{$E_\text{kg}$} & \textbf{$E_\text{enc}$} & \textbf{$E_\text{dec}$}
+ & \textbf{($\mu$J)}
+ & \textbf{PK} & \textbf{CT} & \textbf{SK}
+ &
+ & \\
+\midrule
+ML-KEM-512   & 1 & 0.240 & 0.152 & 0.158 & 0.550
+  &     830 &     526 &     551 &   1\,907
+  &    800 &    768 & 1\,632
+  & 1.0$\times$ & $\checkmark\!\checkmark\!\checkmark$ \\
+ML-KEM-768   & 3 & 0.237 & 0.182 & 0.185 & 0.604
+  &     823 &     636 &     653 &   2\,112
+  &  1\,184 & 1\,088 & 2\,400
+  & 1.0$\times$ & $\checkmark\!\checkmark\!\checkmark$ \\
+ML-KEM-1024  & 5 & 0.273 & 0.216 & 0.231 & 0.720
+  &     947 &     754 &     806 &   2\,507
+  &  1\,568 & 1\,568 & 3\,168
+  & 1.0$\times$ & $\checkmark\!\checkmark\!\checkmark$ \\
+\addlinespace
+HQC-128      & 1 & 22.33 & 44.68 & 73.39  & 140.4
+  & 83\,153 & 167\,590 & 284\,510 & 535\,253
+  & 2\,249 & 4\,433 & ---
+  & 255$\times$ & $\checkmark$ \\
+HQC-192      & 3 & 67.68 & 135.8 & 211.9  & 415.4
+  & 257\,928 & 537\,757 & 856\,128 & 1\,651\,813
+  & 4\,522 & 8\,978 & ---
+  & 688$\times$ & $\sim$ \\
+HQC-256      & 5 & 124.4 & 250.2 & 392.6  & 767.2
+  & 492\,250 & 1\,023\,984 & 1\,620\,633 & 3\,136\,867
+  & 7\,245 & 14\,421 & ---
+  & 1\,066$\times$ & $\sim$ \\
+\addlinespace
+McEliece-348 & 1 & 351.0 & 0.466 & 55.98  & 407.4
+  & 1\,527\,273 & 1\,619 & 208\,294 & 1\,737\,186
+  & 261\,120 &    96 & ---
+  & 741$\times$ & $\times^{\dagger}$ \\
+McEliece-460 & 3 & 1\,281 & 0.872 & 89.59 & 1\,371
+  & 5\,682\,343 & 3\,135 & 339\,956 & 6\,025\,434
+  & 524\,160 &   156 & ---
+  & 2\,272$\times$ & $\times^{\dagger}$ \\
+McEliece-8192& 5 & 9\,021 & 1.894 & 210.1 & 9\,233
+  & 39\,746\,860 & 6\,849 & 829\,782 & 40\,583\,491
+  & 1\,357\,824 &   208 & ---
+  & 12\,823$\times$ & $\times$ \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\item $T_\text{tot}=T_\text{kg}+T_\text{enc}+T_\text{dec}$;\;
+  $\rho$: total cycle time relative to ML-KEM at the same NIST level.\;
+  $\dagger$\,PK sizes (261\,KB--1.33\,MB) prohibitive for constrained UAV links.\;
+  UAV: $\checkmark\!\checkmark\!\checkmark$\,=\,real-time viable,
+  $\checkmark$\,=\,viable with extended interval,
+  $\sim$\,=\,marginal,
+  $\times$\,=\,non-viable.
+\end{tablenotes}
+\end{table*}
+
+\subsubsection{Latency Analysis}
+
+ML-KEM operates sub-millisecond across all three security levels:
+keygen completes in 0.237--0.273\,ms, encapsulation in
+0.152--0.216\,ms, and decapsulation in 0.158--0.231\,ms,
+yielding full-cycle times of 0.550--0.720\,ms.
+The three operations are near-balanced---keygen accounts for
+38--44\% of the cycle, encapsulation 28--30\%, and decapsulation
+29--32\%---confirming that no single phase constitutes a
+bottleneck on ARM Cortex-A72 hardware.
+
+HQC exhibits a sharply different profile.
+At Level~1, full-cycle latency is 140.4\,ms ($\rho = 255\times$),
+rising to 415.4\,ms at Level~3 ($688\times$) and 767.2\,ms
+at Level~5 ($1{,}066\times$).
+Decapsulation dominates every HQC variant, consuming
+51--52\% of the cycle due to the cost of syndrome decoding
+over quasi-cyclic codes; keygen is the lightest phase at only~16\%.
+
+Classic McEliece reveals an extreme keygen asymmetry.
+McEliece-348864 requires 351.0\,ms for key generation (86\% of
+its 407.4\,ms cycle), while McEliece-8192128 demands 9.021\,s
+(98\% of its 9.233\,s cycle) due to probabilistic Goppa-code
+generation with a heavy-tail distribution
+($\sigma/\mu = 74\%$ at Level~5).
+Encapsulation, however, is remarkably fast---0.466--1.894\,ms,
+within an order of magnitude of ML-KEM---but this single fast
+operation cannot offset the multi-second keygen penalty.
+Fig.~\ref{fig:kem_three_panel} visualises these per-operation
+contrasts on a logarithmic scale.
+
+%% ---------------------------------------------------------------
+%%  FIGURE 1: Three-panel horizontal bar chart (Keygen|Encaps|Decaps)
+%% ---------------------------------------------------------------
+\begin{figure*}[t]
+\centering
+\begin{subfigure}[b]{0.32\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  xbar,
+  width=\textwidth,
+  height=5.2cm,
+  bar width=5.5pt,
+  xlabel={Keygen (ms)},
+  xmode=log, log basis x=10,
+  xmin=0.1, xmax=20000,
+  symbolic y coords={ML512,ML768,ML1024,HQ128,HQ192,HQ256,MC348,MC460,MC8192},
+  ytick=data,
+  y tick label style={font=\scriptsize},
+  x tick label style={font=\scriptsize},
+  xlabel style={font=\scriptsize},
+  nodes near coords,
+  nodes near coords style={font=\tiny, anchor=west},
+  point meta=explicit symbolic,
+  enlarge y limits=0.08,
+  grid=major, grid style={dotted, gray!40},
+]
+\addplot[fill=ptblue!45, draw=ptblue!85!black] coordinates {
+  (0.240,ML512)  [0.24]
+  (0.237,ML768)  [0.24]
+  (0.273,ML1024) [0.27]
+  (22.33,HQ128)  [22.3]
+  (67.68,HQ192)  [67.7]
+  (124.4,HQ256)  [124]
+  (351.0,MC348)  [351]
+  (1281,MC460)   [1281]
+  (9021,MC8192)  [9021]
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Keygen}\label{fig:kem_tp_kg}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  xbar,
+  width=\textwidth,
+  height=5.2cm,
+  bar width=5.5pt,
+  xlabel={Encaps (ms)},
+  xmode=log, log basis x=10,
+  xmin=0.05, xmax=1000,
+  symbolic y coords={ML512,ML768,ML1024,HQ128,HQ192,HQ256,MC348,MC460,MC8192},
+  ytick=data,
+  y tick label style={font=\scriptsize},
+  x tick label style={font=\scriptsize},
+  xlabel style={font=\scriptsize},
+  nodes near coords,
+  nodes near coords style={font=\tiny, anchor=west},
+  point meta=explicit symbolic,
+  enlarge y limits=0.08,
+  grid=major, grid style={dotted, gray!40},
+]
+\addplot[fill=ptgold!50, draw=ptgold!85!black] coordinates {
+  (0.152,ML512)  [0.15]
+  (0.182,ML768)  [0.18]
+  (0.216,ML1024) [0.22]
+  (44.68,HQ128)  [44.7]
+  (135.8,HQ192)  [136]
+  (250.2,HQ256)  [250]
+  (0.466,MC348)  [0.47]
+  (0.872,MC460)  [0.87]
+  (1.894,MC8192) [1.89]
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Encaps}\label{fig:kem_tp_enc}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  xbar,
+  width=\textwidth,
+  height=5.2cm,
+  bar width=5.5pt,
+  xlabel={Decaps (ms)},
+  xmode=log, log basis x=10,
+  xmin=0.05, xmax=1000,
+  symbolic y coords={ML512,ML768,ML1024,HQ128,HQ192,HQ256,MC348,MC460,MC8192},
+  ytick=data,
+  y tick label style={font=\scriptsize},
+  x tick label style={font=\scriptsize},
+  xlabel style={font=\scriptsize},
+  nodes near coords,
+  nodes near coords style={font=\tiny, anchor=west},
+  point meta=explicit symbolic,
+  enlarge y limits=0.08,
+  grid=major, grid style={dotted, gray!40},
+]
+\addplot[fill=ptrose!45, draw=ptrose!85!black] coordinates {
+  (0.158,ML512)  [0.16]
+  (0.185,ML768)  [0.19]
+  (0.231,ML1024) [0.23]
+  (73.39,HQ128)  [73.4]
+  (211.9,HQ192)  [212]
+  (392.6,HQ256)  [393]
+  (55.98,MC348)  [56.0]
+  (89.59,MC460)  [89.6]
+  (210.1,MC8192) [210]
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Decaps}\label{fig:kem_tp_dec}
+\end{subfigure}
+\caption{Three-panel KEM latency comparison (log scale).
+  ML-KEM remains sub-millisecond for all operations ($<$0.28\,ms);
+  McEliece encaps (0.47--1.89\,ms) rivals ML-KEM yet its keygen
+  spans 0.35--9.02\,s.  HQC follows a consistent
+  Kg\,$<$\,Enc\,$<$\,Dec ordering with decaps consuming 51--52\%
+  of each cycle.}
+\label{fig:kem_three_panel}
+\end{figure*}
+
+\subsubsection{Energy Analysis}
+
+Energy measurements track the same structural patterns but amplify
+the gaps because power draw is not constant: McEliece keygen
+sustains 4.28--4.40\,W (0.96--1.08\,W above the 3.32\,W idle
+baseline), whereas ML-KEM operates at 3.44--3.52\,W, barely
+above idle.
+The total energy for one ML-KEM cycle ranges from 1.907\,mJ
+(Level~1) to 2.507\,mJ (Level~5)---comfortably within the
+sub-second rekey budget of any battery-powered UAV.
+HQC consumes 535\,mJ at Level~1, rising to 1.652\,J and 3.137\,J
+at Levels~3 and~5 respectively; decapsulation alone accounts for
+284--1\,621\,mJ, i.e.\ 51--52\% of total cycle energy.
+McEliece energy is dominated almost entirely by keygen: 1.527\,J
+(88\%) at Level~1, 5.682\,J (94\%) at Level~3, and 39.747\,J
+(98\%) at Level~5.  The Level~5 total of 40.583\,J is
+$16{,}189\times$ that of ML-KEM-1024.
+Fig.~\ref{fig:kem_energy_stacked} decomposes these per-operation
+contributions.
+
+%% ---------------------------------------------------------------
+%%  FIGURE 2: Stacked energy breakdown
+%% ---------------------------------------------------------------
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  xbar stacked,
+  width=\columnwidth,
+  height=5.8cm,
+  xmode=log, log basis x=10,
+  xlabel={Energy ($\mu$J) --- log scale},
+  xlabel style={font=\scriptsize},
+  x tick label style={font=\scriptsize},
+  symbolic y coords={MC8192,MC460,MC348,HQ256,HQ192,HQ128,ML1024,ML768,ML512},
+  ytick=data,
+  y tick label style={font=\scriptsize},
+  legend style={at={(0.98,0.02)}, anchor=south east, font=\scriptsize,
+    legend columns=3},
+  bar width=5.5pt,
+  xmin=100,
+  enlarge y limits=0.08,
+  every axis plot/.append style={fill opacity=0.85},
+  axis x line*=bottom,
+  axis y line*=left,
+]
+\addplot[fill=ptblue!40, draw=ptblue!80!black] coordinates {
+  (830,ML512) (823,ML768) (947,ML1024)
+  (83153,HQ128) (257928,HQ192) (492250,HQ256)
+  (1527273,MC348) (5682343,MC460) (39746860,MC8192)
+};
+\addplot[fill=ptgold!50, draw=ptgold!80!black] coordinates {
+  (526,ML512) (636,ML768) (754,ML1024)
+  (167590,HQ128) (537757,HQ192) (1023984,HQ256)
+  (1619,MC348) (3135,MC460) (6849,MC8192)
+};
+\addplot[fill=ptrose!40, draw=ptrose!80!black] coordinates {
+  (551,ML512) (653,ML768) (806,ML1024)
+  (284510,HQ128) (856128,HQ192) (1620633,HQ256)
+  (208294,MC348) (339956,MC460) (829782,MC8192)
+};
+\legend{Keygen,Encaps,Decaps}
+\end{axis}
+\end{tikzpicture}
+\caption{Stacked energy breakdown by KEM operation (log scale).
+  ML-KEM total energy is $\sim$\!2\,mJ across all levels.
+  McEliece keygen dominates ($>$97\% at L5) while HQC
+  decaps is the heaviest component ($>$50\% at every level).}
+\label{fig:kem_energy_stacked}
+\end{figure}
+
+\subsubsection{Bandwidth--Energy Trade-off}
+
+The UAV link budget constrains both computation and bandwidth.
+Fig.~\ref{fig:kem_pareto} plots total bandwidth cost (PK\,+\,CT)
+against total cycle energy for all nine variants.
+ML-KEM occupies the Pareto-optimal lower-left corner: 1.568--3.136\,KB
+total bandwidth and 1.907--2.507\,mJ energy.  Scaling from Level~1
+to Level~5 costs only $1.96\times$ in PK size and $1.31\times$ in
+energy---the most graceful scaling of any family.
+
+HQC bandwidth is moderate (6.7--21.7\,KB) but energy is
+281--1{,}251$\times$ that of ML-KEM.
+McEliece offers the smallest ciphertext of any family
+(96--208\,B), yet its public keys are 261\,KB at Level~1,
+524\,KB at Level~3, and 1.33\,MB at Level~5---pushing it to
+the far right of the plot.  At a typical UAV telemetry rate
+of 250\,kbps, transmitting the McEliece-8192128 public key alone
+requires 43.5\,s, consuming the entire rekey window.
+
+%% ---------------------------------------------------------------
+%%  FIGURE 3: Pareto bubble — Bandwidth vs Energy
+%% ---------------------------------------------------------------
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=6.2cm,
+  xlabel={PK + CT (bytes) --- log scale},
+  ylabel={Total Energy ($\mu$J) --- log scale},
+  xlabel style={font=\scriptsize},
+  ylabel style={font=\scriptsize},
+  x tick label style={font=\scriptsize},
+  y tick label style={font=\scriptsize},
+  xmode=log, ymode=log,
+  log basis x=10, log basis y=10,
+  xmin=500, xmax=2000000,
+  ymin=500, ymax=100000000,
+  grid=major, grid style={dotted, gray!40},
+  legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize},
+]
+% ML-KEM (PK+CT): 1568, 2272, 3136
+\addplot[only marks, mark=*, color=ptblue, mark size=4.5pt,
+  fill=ptblue!40] coordinates {
+  (1568, 1907) (2272, 2112) (3136, 2507)
+};
+\addlegendentry{ML-KEM}
+% HQC (PK+CT): 6682, 13500, 21666
+\addplot[only marks, mark=triangle*, color=ptgold, mark size=4.5pt,
+  fill=ptgold!50] coordinates {
+  (6682, 535253) (13500, 1651813) (21666, 3136867)
+};
+\addlegendentry{HQC}
+% McEliece (PK+CT): 261216, 524316, 1358032
+\addplot[only marks, mark=square*, color=ptrose, mark size=4.5pt,
+  fill=ptrose!40] coordinates {
+  (261216, 1737186) (524316, 6025434) (1358032, 40583491)
+};
+\addlegendentry{McEliece}
+
+% Data labels
+\node[font=\tiny, anchor=south, text=ptblue!80!black]
+  at (axis cs:1568,1907) {512};
+\node[font=\tiny, anchor=south west, text=ptblue!80!black]
+  at (axis cs:2272,2112) {768};
+\node[font=\tiny, anchor=south west, text=ptblue!80!black]
+  at (axis cs:3136,2507) {1024};
+\node[font=\tiny, anchor=south west, text=ptgold!80!black]
+  at (axis cs:6682,535253) {128};
+\node[font=\tiny, anchor=south west, text=ptgold!80!black]
+  at (axis cs:13500,1651813) {192};
+\node[font=\tiny, anchor=south west, text=ptgold!80!black]
+  at (axis cs:21666,3136867) {256};
+\node[font=\tiny, anchor=south, text=ptrose!80!black]
+  at (axis cs:261216,1737186) {348};
+\node[font=\tiny, anchor=south, text=ptrose!80!black]
+  at (axis cs:524316,6025434) {460};
+\node[font=\tiny, anchor=south, text=ptrose!80!black]
+  at (axis cs:1358032,40583491) {8192};
+
+% Pareto front annotation
+\draw[dashed, ptblue!60, thick]
+  (axis cs:1568,1907) -- (axis cs:3136,2507);
+\node[font=\tiny, text=ptblue!70!black, rotate=8, anchor=south]
+  at (axis cs:2200,1650) {Pareto front};
+\end{axis}
+\end{tikzpicture}
+\caption{Bandwidth (PK+CT) vs.\ total cycle energy (log--log).
+  ML-KEM dominates the Pareto front: 1.5--3.1\,KB bandwidth and
+  $<$2.5\,mJ energy.  McEliece public keys ($>$261\,KB) push it
+  far right despite having the smallest CT (96--208\,B).}
+\label{fig:kem_pareto}
+\end{figure}
+
+\subsubsection{NIST Level Scaling}
+
+Fig.~\ref{fig:kem_level_scaling} isolates the scaling behaviour
+from Level~1 to Level~5 in two panels: combined encapsulation +
+decapsulation latency and public-key size.
+ML-KEM scales most gracefully: Enc\,+\,Dec grows from 0.310\,ms to
+0.447\,ms ($1.44\times$), and PK from 800\,B to 1\,568\,B
+($1.96\times$)---both below $2\times$.
+HQC latency scales $5.4\times$ (118.1\,ms $\to$ 642.8\,ms),
+with PK growing $3.2\times$ (2\,249\,B $\to$ 7\,245\,B).
+McEliece PK size explodes $5.2\times$ (261\,KB $\to$ 1.33\,MB),
+while its Enc\,+\,Dec rises $3.8\times$ (56.4\,ms $\to$
+212.0\,ms)---driven entirely by the decapsulation growth, since
+encapsulation only moves from 0.466 to 1.894\,ms.
+
+These scaling factors have direct implications for UAV rekey
+interval selection: ML-KEM can upgrade from Level~1 to Level~5
+with negligible impact ($+$0.17\,ms per cycle), whereas HQC and
+McEliece force significant interval relaxation or pre-provisioning
+strategies at higher levels.
+
+%% ---------------------------------------------------------------
+%%  FIGURE 4: NIST Level Scaling — Dual Panel
+%% ---------------------------------------------------------------
+\begin{figure}[t]
+\centering
+\begin{subfigure}[b]{\columnwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.92\columnwidth,
+  height=3.8cm,
+  xlabel={NIST Level},
+  ylabel={Enc+Dec (ms)},
+  xlabel style={font=\scriptsize},
+  ylabel style={font=\scriptsize},
+  x tick label style={font=\scriptsize},
+  y tick label style={font=\scriptsize},
+  ymode=log,
+  xtick={1,3,5},
+  xticklabels={L1,L3,L5},
+  ymin=0.1, ymax=1000,
+  grid=major, grid style={dotted, gray!40},
+  mark size=3.5pt,
+  legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize,
+    legend columns=3},
+  thick,
+]
+\addplot[color=ptblue, mark=square*, thick] coordinates {
+  (1, 0.310) (3, 0.367) (5, 0.447)
+};
+\addlegendentry{ML-KEM}
+\addplot[color=ptgold, mark=triangle*, thick] coordinates {
+  (1, 118.07) (3, 347.7) (5, 642.8)
+};
+\addlegendentry{HQC}
+\addplot[color=ptrose, mark=diamond*, thick] coordinates {
+  (1, 56.45) (3, 90.46) (5, 212.0)
+};
+\addlegendentry{McEliece}
+\end{axis}
+\end{tikzpicture}
+\caption{Enc+Dec combined latency across NIST levels}\label{fig:kem_ls_lat}
+\end{subfigure}
+
+\vspace{2mm}
+\begin{subfigure}[b]{\columnwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.92\columnwidth,
+  height=3.8cm,
+  xlabel={NIST Level},
+  ylabel={PK Size (bytes)},
+  xlabel style={font=\scriptsize},
+  ylabel style={font=\scriptsize},
+  x tick label style={font=\scriptsize},
+  y tick label style={font=\scriptsize},
+  ymode=log,
+  xtick={1,3,5},
+  xticklabels={L1,L3,L5},
+  ymin=100, ymax=5000000,
+  grid=major, grid style={dotted, gray!40},
+  mark size=3.5pt,
+  legend style={at={(0.98,0.02)}, anchor=south east, font=\scriptsize,
+    legend columns=3},
+  thick,
+]
+\addplot[color=ptblue, mark=square*, thick] coordinates {
+  (1, 800) (3, 1184) (5, 1568)
+};
+\addlegendentry{ML-KEM}
+\addplot[color=ptgold, mark=triangle*, thick] coordinates {
+  (1, 2249) (3, 4522) (5, 7245)
+};
+\addlegendentry{HQC}
+\addplot[color=ptrose, mark=diamond*, thick] coordinates {
+  (1, 261120) (3, 524160) (5, 1357824)
+};
+\addlegendentry{McEliece}
+\end{axis}
+\end{tikzpicture}
+\caption{Public key size across NIST levels}\label{fig:kem_ls_pk}
+\end{subfigure}
+\caption{NIST level scaling.  ML-KEM scales gracefully
+  ($<$2$\times$ from L1$\to$L5 in both latency and PK size).
+  HQC latency grows 5.4$\times$ while McEliece PK explodes
+  5.2$\times$, reaching 1.33\,MB at Level~5.}
+\label{fig:kem_level_scaling}
+\end{figure}
+
+\subsubsection{McEliece Encapsulation Advantage}
+
+Despite its prohibitive keygen and PK sizes, McEliece possesses
+one noteworthy property: ultrafast encapsulation.
+Fig.~\ref{fig:kem_encaps_ct} overlays encapsulation latency (bars)
+with ciphertext size (diamonds) on dual axes.
+McEliece encaps completes in 0.466--1.894\,ms---only
+$3.1\times$--$8.8\times$ slower than ML-KEM and
+$96\times$--$132\times$ faster than HQC at matched levels.
+McEliece also produces the smallest ciphertexts: 96\,B at Level~1,
+156\,B at Level~3, and 208\,B at Level~5, compared to ML-KEM's
+768--1\,568\,B and HQC's 4\,433--14\,421\,B.
+However, this encapsulation advantage is entirely negated by the
+keygen and PK-transmission costs.  A full KEM exchange requires
+shipping the public key, and even McEliece-348864's 261\,KB PK
+takes 8.4\,s to transmit at 250\,kbps---orders of magnitude longer
+than its 0.466\,ms encaps.
+
+%% ---------------------------------------------------------------
+%%  FIGURE 5: Encapsulation speed + CT size dual-axis
+%% ---------------------------------------------------------------
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  ybar,
+  width=\columnwidth,
+  height=5.2cm,
+  bar width=7pt,
+  ylabel={Encaps Latency (ms)},
+  ylabel style={font=\scriptsize},
+  y tick label style={font=\scriptsize},
+  ymode=log, log basis y=10,
+  ymin=0.05, ymax=500,
+  symbolic x coords={ML512,ML768,ML1024,HQ128,HQ192,HQ256,MC348,MC460,MC8192},
+  xtick=data,
+  x tick label style={rotate=35, anchor=east, font=\scriptsize},
+  axis y line*=left,
+  legend style={at={(0.02,0.98)}, anchor=north west, font=\scriptsize},
+  every axis plot/.append style={fill opacity=0.85},
+  enlarge x limits=0.08,
+  nodes near coords,
+  nodes near coords style={font=\tiny},
+]
+\addplot[fill=ptgold!50, draw=ptgold!80!black] coordinates {
+  (ML512,0.152) (ML768,0.182) (ML1024,0.216)
+  (HQ128,44.68) (HQ192,135.8) (HQ256,250.2)
+  (MC348,0.466) (MC460,0.872) (MC8192,1.894)
+};
+\addlegendentry{Encaps latency}
+\end{axis}
+\begin{axis}[
+  width=\columnwidth,
+  height=5.2cm,
+  ylabel={Ciphertext Size (bytes)},
+  ylabel style={font=\scriptsize},
+  y tick label style={font=\scriptsize},
+  ymode=log, log basis y=10,
+  ymin=30, ymax=50000,
+  symbolic x coords={ML512,ML768,ML1024,HQ128,HQ192,HQ256,MC348,MC460,MC8192},
+  xtick=\empty,
+  axis y line*=right,
+  axis x line=none,
+  enlarge x limits=0.08,
+  legend style={at={(0.98,0.98)}, anchor=north east, font=\scriptsize},
+]
+\addplot[only marks, mark=diamond*, color=ptrose, mark size=4pt, thick]
+  coordinates {
+    (ML512,768) (ML768,1088) (ML1024,1568)
+    (HQ128,4433) (HQ192,8978) (HQ256,14421)
+    (MC348,96) (MC460,156) (MC8192,208)
+  };
+\addlegendentry{CT size}
+\end{axis}
+\end{tikzpicture}
+\caption{Encapsulation latency (bars, left axis) and ciphertext size
+  (diamonds, right axis).  McEliece achieves the smallest CT
+  (96--208\,B) and near sub-ms encaps, competitive with ML-KEM;
+  however, its massive PK (261\,KB--1.33\,MB) and multi-second
+  keygen negate this advantage for UAV rekey.}
+\label{fig:kem_encaps_ct}
+\end{figure}
+
+\subsubsection{UAV Viability Assessment}
+
+Synthesising timing, energy, and bandwidth metrics yields a clear
+hierarchy.  ML-KEM is the only family that achieves real-time
+viability ($\checkmark\!\checkmark\!\checkmark$) at all three NIST
+levels: sub-millisecond cycles, sub-2.5\,mJ energy, and
+sub-3.2\,KB total bandwidth (PK\,+\,CT).  Only ML-KEM enables
+sub-second periodic rekey on ARM Cortex-A72 hardware---a 30\,s
+rekey interval incurs $<$0.01\% overhead.
+
+HQC-128 is marginally viable ($\checkmark$) with a 140.4\,ms cycle
+and 535\,mJ energy, but Levels~3 and~5 push total energy above 1.6\,J
+and cycle time above 415\,ms, requiring extended rekey intervals for
+battery conservation.  At Level~5, the 767.2\,ms cycle and 3.137\,J
+energy make HQC practical only if rekey frequency is relaxed to
+$\geq$60\,s.
+
+Classic McEliece is non-viable ($\times$) at all levels due to the
+compounding effects of multi-second keygen (351\,ms--9.02\,s), extreme
+energy (1.74--40.6\,J), and bandwidth-prohibitive public keys
+(261\,KB--1.33\,MB).  Even at Level~1, the PK transmission time
+(8.4\,s at 250\,kbps) alone exceeds the computational cost of an
+entire ML-KEM-1024 rekey cycle by four orders of magnitude.
+
+These results establish ML-KEM as the unambiguous choice for the
+KEM component of a post-quantum UAV tunnel; subsequent sections
+evaluate signature and AEAD primitives under the same methodology.

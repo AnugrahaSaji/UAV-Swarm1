@@ -1,0 +1,197 @@
+INA219 Hardware Investigation & Fix Log
+=======================================
+Platform : Raspberry Pi 4 Model B (BCM2711), official 5.1 V / 3 A USB-C PSU
+Breakout : GY-INA219 at I2C address 0x40, bus 1, 0.1 Ω shunt resistor
+Date     : February–March 2026
+
+
+1. SYMPTOM
+----------
+INA219 bus voltage reads ~4.06–4.24 V instead of the expected ~5.0 V for the
+5 V rail.  Shunt voltage (and therefore current) reads correctly (~570 mA idle,
+consistent with Pi 4 idle spec of 0.6 A).  The discrepancy is a ~16–18 %
+systematic underread on the bus voltage ADC only.
+
+
+2. ROOT CAUSE — COUNTERFEIT / CLONE INA219
+-------------------------------------------
+The INA219 chip on this GY-INA219 breakout is counterfeit or a low-quality
+clone.  Evidence:
+
+  (a) ALL register writes are silently ignored.
+      The chip ACKs every I2C write transaction, but the register value never
+      changes.  This was exhaustively tested with FIVE different write methods:
+
+        1. smbus2 write_word_data   — ACKs, value unchanged
+        2. smbus2 i2c_rdwr (raw)    — ACKs, value unchanged
+        3. Raw os.write on /dev/i2c-1 — ACKs, value unchanged
+        4. Kernel i2cset (userspace) — ACKs, value unchanged
+        5. Kernel i2ctransfer        — ACKs, value unchanged
+
+  (b) Configuration register (0x00) is stuck at power-on default 0x399F:
+        Bit field      Value    Meaning
+        ─────────────  ───────  ──────────────────────────
+        BRNG           1        32 V bus range
+        PGA            11       /8 gain (±320 mV → ±3.2 A @ 0.1 Ω)
+        BADC           0011     12-bit bus ADC
+        SADC           1001     12-bit shunt ADC
+        MODE           111      Continuous shunt + bus
+
+  (c) Calibration register (0x05) is stuck at 0x0000.
+      Cannot be written.  This means the chip's internal power register
+      (0x03) always reads 0.  Power must be computed in software as V × I.
+
+  (d) Bus voltage ADC has ~16–18 % systematic low bias.
+      100-sample statistical analysis:
+        V_bus  = 4.236 ± 0.124 V  (raw, expected ~5.0 V → 15.3 % error)
+        V_shunt = -56.92 ± 1.36 mV  (accurate, matches 0.57 A × 0.1 Ω)
+
+
+3. Pi 4 GROUND TRUTH VERIFICATION
+----------------------------------
+We verified that the actual PSU voltage is correct (not a power supply issue):
+
+  • vcgencmd get_throttled → 0x0  (no undervoltage event, ever)
+  • hwmon rpi_volt in0_lcrit_alarm → 0  (PMIC confirms > 4.63 V)
+  • vcgencmd measure_volts core → 0.916 V  (normal for BCM2711)
+  • vcgencmd measure_volts sdram_c/i/p → 1.1 V  (normal)
+  • Official PSU is 5.1 V / 3 A; under 570 mA load → ~5.0 V at Pi
+
+  IMPORTANT: vcgencmd pmic_read_adc is Pi 5 ONLY.  On Pi 4 it returns
+  "Command not registered".  There is no way to read the actual 5 V input
+  voltage from the Pi 4 SoC — only the undervoltage alarm is available.
+
+
+4. FIX — SOFTWARE GAIN CORRECTION
+----------------------------------
+Since hardware calibration is impossible (all writes silently fail), a
+software gain factor is applied after the raw ADC read.
+
+  Constant : _VBUS_GAIN = 1.22  (configurable via INA219_VBUS_GAIN env var)
+  Formula  : corrected_voltage = raw_ADC_voltage × _VBUS_GAIN
+  Disable  : set INA219_VBUS_GAIN=1.0
+
+  Derivation of 1.22:
+    Session A raw mean: 4.24 V → 4.24 × 1.22 = 5.17 V
+    Session B raw mean: 4.06 V → 4.06 × 1.22 = 4.95 V
+    Cross-session average: ~5.06 V  (within 1.2 % of 5.0 V)
+
+  Validation (50-sample run with gain=1.22):
+    Corrected V_bus : 4.9607 ± 0.0787 V  (within 1 % of 5.0 V)
+    Current         : 0.5702 A           (matches Pi 4 idle spec)
+    Power           : 2.8284 W           (matches Pi 4 idle ~3.0 W)
+
+  bench_hw_check.py ALL PASS (7/7):
+    INA219 voltage  : 5.314 V
+    INA219 current  : 0.569 A
+    INA219 power    : 3.023 W
+    Valid samples   : 21/21 at 10 Hz
+    Power range     : min 2.706, avg 2.852, max 3.355 W
+
+
+5. FILES MODIFIED
+-----------------
+All three files that read INA219 bus voltage were updated:
+
+  (a) core/power_monitor.py
+      - Added _VBUS_GAIN constant with env override and rationale comment
+      - Applied × _VBUS_GAIN in _read_bus_voltage()
+      - Added docstring to _configure() noting writes silently fail on
+        counterfeit chip but default 0x399F is acceptable
+      - Added pmic_read_adc probe in Rpi5PmicPowerMonitor.__init__ to
+        fail fast on Pi 4 instead of returning a broken monitor
+
+  (b) core/metrics_collectors.py
+      - Added _VBUS_GAIN constant
+      - Applied gain to ALL 4 voltage read paths:
+        • _read_ina219_bus_voltage_direct() (smbus2 register read)
+        • collect() smbus2_direct path (inline register read)
+        • collect() adafruit path (.bus_voltage × _VBUS_GAIN)
+        • collect() pi-ina219 path (.voltage() × _VBUS_GAIN)
+      - Recomputed power with corrected voltage in library paths
+
+  (c) bench_ddos_v2.py
+      - Added _VBUS_GAIN constant
+      - Applied gain in read_once() for both backends:
+        • pi-ina219: v = .voltage() × _VBUS_GAIN, p = v × abs(c)
+        • adafruit:  v = .bus_voltage × _VBUS_GAIN, p = v × c
+
+  (d) tools/validate_voltage_correction.py  [new file]
+      - 50-sample validation script showing raw vs corrected voltage
+
+
+6. BCM2835 I2C WORKAROUNDS (5 FAILURE MODES)
+----------------------------------------------
+The BCM2835 I2C controller on Pi 4 has multiple bugs.  All are handled:
+
+  1. First-transaction EIO
+     After opening /dev/i2c-N, the first I2C_SMBUS ioctl always returns
+     errno 5 (EIO).  Fix: throwaway read_byte_data(addr, 0x00) after open.
+     CRITICAL: read_byte (no register select) corrupts the bus — must use
+     read_byte_data (includes register-select write phase).
+
+  2. Zero-return-after-idle
+     After >~50 ms idle, the first read returns 0x0000 without error.
+     Fix: retry loop in _read_u16() — if val==0 and register is 0x00 or
+     0x02 (which should never be 0), retry up to 3 times.
+
+  3. Post-write EIO
+     The first read after any write fails with EIO.  Fix: throwaway
+     read_byte_data after write_word_data in _configure().
+
+  4. write_i2c_block_data corruption
+     I2C_SMBUS_I2C_BLOCK_DATA (used by write_i2c_block_data) permanently
+     corrupts the BCM2835 I2C bus state.  Fix: use write_word_data
+     (I2C_SMBUS_WORD_DATA) exclusively.
+
+  5. read_i2c_block_data unreliability
+     I2C_SMBUS_I2C_BLOCK_DATA for reads is unreliable after writes.
+     Fix: use read_word_data with manual byte-swap (SMBus = LE, INA219 = BE).
+
+
+7. SHUNT POLARITY
+-----------------
+The INA219 breakout has reversed polarity — current flows from V- to V+
+(opposite to the TI reference design).  The shunt voltage reads negative
+(~-57 mV) during normal operation.
+
+  Fix: sign_mode='auto' probes shunt voltage for 2 seconds, finds median
+  < -20 µV → sign_factor = -1.  Current = (V_shunt / R_shunt) × sign_factor.
+
+  In library paths (pi-ina219, adafruit), abs() is used on current values
+  since the library may already handle sign differently.
+
+
+8. WHAT DOES NOT WORK
+---------------------
+  × Writing ANY register (config, calibration, alert thresholds)
+  × Hardware gain/range configuration
+  × INA219 internal power register (stuck at 0 due to cal=0)
+  × vcgencmd pmic_read_adc on Pi 4 (Pi 5 only)
+  × Reading actual 5 V input voltage from Pi 4 SoC (only alarm flag available)
+  × adafruit_ina219 library set_calibration_32V_2A() — writes silently fail
+  × pi-ina219 library .configure() — uses Adafruit_GPIO write_i2c_block_data
+    which triggers BCM2835 I2C_SMBUS_I2C_BLOCK_DATA bug → OSError [Errno 5].
+    pi-ina219 is fundamentally broken on RPi4 due to this I2C backend choice.
+
+  These "failures" are all harmless — they ACK and return without error
+  (except pi-ina219 which raises EIO).  The default power-on config 0x399F
+  and the software gain correction make all measurements usable for the
+  ISORC 2026 benchmark.
+
+  RECOMMENDED I2C BACKEND ORDER (for bench_ddos_v2.py and metrics_collectors):
+    1. smbus2 direct register reads (read_word_data + byte-swap)  ← BEST
+    2. adafruit_ina219 (CircuitPython Blinka) — works but slightly noisier
+    3. pi-ina219 — BROKEN on RPi4, do not use
+
+
+9. RECOMMENDATIONS FOR FUTURE HARDWARE
+---------------------------------------
+  1. Replace the GY-INA219 breakout with a genuine TI INA219 breakout
+     (e.g., Adafruit #904) to eliminate the need for software gain correction.
+  2. Or use a different power monitor IC (INA226, INA3221) that doesn't
+     have the clone/counterfeit ecosystem problem.
+  3. On Pi 5, use the built-in PMIC telemetry (vcgencmd pmic_read_adc)
+     instead of an external INA219 — no hardware needed.
+  4. Always verify register writability on new INA219 breakouts before
+     trusting bus voltage readings.

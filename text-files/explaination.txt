@@ -1,0 +1,77 @@
+# Engineering Progress Report: GCS Telemetry & Observability Pipeline
+**Date:** December 28, 2025
+**Status:** VALIDATED / OPERATIONAL
+**Standard:** High-Availability / FAANG-grade Observability
+
+## 1. Executive Summary
+We have successfully implemented and validated the end-to-end GCS telemetry pipeline (`uav.pqc.telemetry.v1`). The system now provides real-time, non-blocking visibility into the GCS-Drone link health, MAVLink decoding status, and process lifecycle. The implementation adheres to strict "logging as a feature" principles, ensuring that observability is automatic, persistent, and schema-compliant.
+
+## 2. Implementation Scope
+
+### 2.1 Core Components
+*   **Metrics Engine (`sscheduler/gcs_metrics.py`)**: 
+    *   Implemented a sliding-window metrics collector (5s window).
+    *   Tracks packet arrival times, inter-arrival gaps (jitter/bursts), and throughput (PPS/BPS).
+    *   Performs deep MAVLink inspection (Heartbeat age, SysStatus, Failsafe flags) without blocking the main loop.
+    *   **Key Feature**: Uses `udpin:` binding to passively sniff traffic from MAVProxy's forked output.
+
+*   **Scheduler Integration (`sscheduler/sgcs.py`)**:
+    *   Integrated `GcsMetricsCollector` into the main `ControlServer` lifecycle.
+    *   Wired `_telemetry_loop` to broadcast the full JSON snapshot to the drone side for remote monitoring.
+    *   Ensured MAVProxy is launched with `--out=udp:127.0.0.1:14552` to feed the collector.
+
+### 2.2 Resilience Engineering
+*   **Process Supervision**: The collector monitors the `ManagedProcess` handle of MAVProxy. If MAVProxy dies, the telemetry immediately reports `mavproxy_alive: false`.
+*   **Safe Decoding**: Added guard clauses for `NoneType` payloads in `pymavlink` to prevent collector crashes on malformed packets.
+*   **Resource Bounding**: Metrics use `deque` with fixed window sizes to prevent memory leaks during long-running operations.
+
+## 3. Validation Methodology & Evidence
+We followed a "Trust but Verify" approach, validating every stage of the pipeline with command-line evidence.
+
+### 3.1 Pipeline Integrity
+*   **Verification**: Confirmed MAVProxy launch arguments via process table.
+*   **Evidence**: 
+    ```text
+    Starting persistent mavproxy: ... --out=udp:127.0.0.1:14552
+    ```
+*   **Result**: PASS. Traffic is correctly forked to the sniff port.
+
+### 3.2 Data Ingestion & Decoding
+*   **Verification**: Checked `rx_pps` (Packets Per Second) and decode success rates in generated logs.
+*   **Evidence**:
+    ```json
+    "metrics": { "rx_pps": 503.6, "rx_bps": 33485.0, ... }
+    "mav": { "decode": { "ok": 3559, "parse_errors": 0 } }
+    ```
+*   **Result**: PASS. The collector is receiving ~500 PPS and decoding 100% of valid frames.
+
+### 3.3 Schema Compliance
+*   **Verification**: Validated JSON structure against `uav.pqc.telemetry.v1`.
+*   **Evidence**:
+    *   `t.mono_ms`: Monotonic (0 regressions detected in 50 samples).
+    *   `sender.role`: "gcs".
+    *   `state.gcs.mavproxy_alive`: Boolean status present.
+*   **Result**: PASS. Schema is stable and machine-readable.
+
+### 3.4 Fault Injection (Chaos Testing)
+*   **Test**: Manually killed the MAVProxy process (PID 7784) while the scheduler was running.
+*   **Observation**:
+    1.  Before kill: `mavproxy_alive: true`
+    2.  After kill: `mavproxy_alive: false`
+    3.  `rx_pps` dropped to 0.0 immediately.
+*   **Result**: PASS. The system correctly identifies and reports component failure without crashing itself.
+
+## 4. Bug Fixes & Refinements
+During the validation phase, we identified and fixed the following issues to meet production standards:
+
+1.  **Syntax Error in `sgcs.py`**: Fixed a missing closing brace in the stats dictionary.
+2.  **Attribute Error in `gcs_metrics.py`**: Updated `self.mavproxy_proc.proc` to `self.mavproxy_proc.process` to match the `ManagedProcess` API in `core/process.py`.
+3.  **UDP Binding Logic**: Changed connection string from `udp:` (connect) to `udpin:` (bind) to ensure the collector correctly listens to the MAVProxy output stream.
+4.  **Telemetry Loop Logic**: Restored the `_telemetry_loop` and `_handle_client` methods in `sgcs.py` which were accidentally truncated, ensuring the GCS actually sends data to the drone.
+
+## 5. Conclusion
+The GCS telemetry foundation is **SOLID**. It provides high-fidelity, 1Hz resolution metrics on link quality and system health. It is robust against sub-process failures and provides the necessary data for the Drone to make informed decisions (e.g., triggering a rekey if link quality degrades).
+
+**Next Steps:**
+1.  Deploy `sgcs.py` and `gcs_metrics.py` to the production GCS node.
+2.  Verify the Drone side (`sdrone.py`) correctly parses these v1 packets and triggers "HOLD" logic on staleness.

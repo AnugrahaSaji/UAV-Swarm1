@@ -1,0 +1,53 @@
+================================================================================
+ EMPIRICAL OBSERVATIONS — Secure Tunnel PQC Benchmark Suite (Analysis Copy)
+================================================================================
+
+NOTICE: The authoritative, exhaustive version of this document is located at:
+  paper/observations.txt
+
+This file is a summary copy for the analysis/ folder. See paper/observations.txt
+for the full 11-section deep dive covering all metric columns.
+
+────────────────────────────────────────────────────────────────────────────────
+ SUMMARY OF KEY OBSERVATIONS
+────────────────────────────────────────────────────────────────────────────────
+
+Dataset: 217 runs × 36 metrics + 74 suites × 250 delta-enriched metrics
+Platform: Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz, 4 GB RAM, BCM2711)
+
+1. HANDSHAKE: ML-KEM completes in <20ms at all security levels. McEliece-8192128
+   reaches 3.8s under TST. McEliece-460896+SPHINCS-192s HARD FAILS (48s timeout).
+
+2. AEAD: AES-GCM/ChaCha20 encrypt at 70-75µs baseline, ~120µs under TST.
+   Ascon-128a encrypts at 1.32ms baseline, ~2.35ms under TST (18x gap → 20x gap).
+
+3. CPU: Baseline 23-32%. XGBoost +25pp. TST +60-65pp (hitting 94-100% peak).
+
+4. TEMPERATURE: Baseline 57-62°C. XGBoost 63-72°C. TST 73-80°C (near 85°C throttle).
+
+5. POWER: Baseline 3.8-4.1W. XGBoost 4.7-5.0W (+22%). TST 5.5-5.7W (+43%).
+   Peak power reaches 8.2W under TST.
+
+6. ENERGY/HANDSHAKE: 0.063 J (ML-KEM+Falcon+AES) to 23.81 J (McEliece+SPHINCS+Ascon).
+   3 orders of magnitude range.
+
+7. RTT: Baseline 2-12ms. TST outliers reach 132ms avg / 395ms p95.
+   3 suite configs violate ICAO 300ms C2 link requirement under TST.
+
+8. PACKET LOSS: 0.0 across ALL 217 runs. Zero CRC errors, zero drops.
+   System degrades gracefully via latency, never via data corruption.
+
+9. MEMORY: RSS 51-60 MB across all scenarios. DDoS detectors run as separate
+   processes. Memory is NOT a constraint.
+
+10. MAVLink: heartbeat_loss=0, mavlink_crc_errors=0, mavlink_drops=0.
+    Protocol layer is completely resilient to crypto/thermal stress.
+
+11. FAILURES: Only cs-classicmceliece460896-aesgcm-sphincs192s fails (3/217 runs).
+    All other 214 runs: handshake_ok=True, validation=PASS.
+
+────────────────────────────────────────────────────────────────────────────────
+ For full details see: paper/observations.txt
+ For interpretations see: analysis/understandings.md
+ For actionable conclusions see: analysis/conclusions.md
+================================================================================

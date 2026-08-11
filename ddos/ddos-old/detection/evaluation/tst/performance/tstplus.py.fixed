@@ -1,0 +1,40 @@
+from typing import Callable
+# Update imports to use fasttransform instead of fastcore.dispatch
+try:
+    # Try the new import path first
+    from fasttransform.dispatch import *
+except ImportError:
+    # Fall back to the old path for backward compatibility
+    try:
+        from fastcore.dispatch import *
+    except ImportError:
+        print("Error: Neither fasttransform.dispatch nor fastcore.dispatch could be imported")
+        raise
+
+from tsai.imports import *
+from tsai.utils import *
+from tsai.models.layers import *
+from tsai.models.utils import *
+from tsai.models.positional_encoders import *
+from tsai.data.core import *
+
+"""## TST"""
+
+class _TSTEncoderLayer(Module):
+    def __init__(self, q_len, d_model, n_heads, d_k=None, d_v=None, d_ff=256, store_attn=False,
+                 norm='BatchNorm', attn_dropout=0, dropout=0., bias=True, activation="gelu", res_attention=False, pre_norm=False):
+
+        assert not d_model%n_heads, f"d_model ({d_model}) must be divisible by n_heads ({n_heads})"
+        d_k = ifnone(d_k, d_model // n_heads)
+        d_v = ifnone(d_v, d_model // n_heads)
+
+        # Multi-Head attention
+        self.res_attention = res_attention
+        self.self_attn = MultiheadAttention(d_model, n_heads, d_k, d_v, attn_dropout=attn_dropout, proj_dropout=dropout, res_attention=res_attention)
+
+        # Add & Norm
+        self.dropout_attn = nn.Dropout(dropout)
+        if "batch" in norm.lower():
+            self.norm_attn = nn.Sequential(Transpose(1,2), nn.BatchNorm1d(d_model), Transpose(1,2))
+        else:
+            self.norm_attn = nn.LayerNorm(d_model)

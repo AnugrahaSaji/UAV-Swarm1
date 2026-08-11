@@ -1,0 +1,131 @@
+% Manual, table-by-table results draft
+% Source verified from: v2-1.8ghz/raw_data/raw/{kem,sig}/*.json, power_aead_benchmark.csv,
+% bench_ddos_results/20260302_135859/comparison.json, and sscheduler/policy.py
+
+This section reports only directly measured or code-defined values. Primitive benchmarks are taken from the latest 1.8GHz raw runs; DDoS coupling results are aggregated from the 72-suite campaign outputs; scheduler thresholds and cross-axis guards are extracted from runtime policy constants.
+
+\subsection{KEM Primitives (Latest Individual Benchmarks, 1.8GHz)}
+\begin{table*}[t]
+\centering
+\caption{KEM primitive metrics from the latest individual raw benchmarks. $\Delta P = P_{mean}-P_{idle}$ with $P_{idle}=3309\,\mathrm{mW}$.}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llrrrrrrr@{}}\toprule
+Alias & NIST & KeyGen ms & Encap ms & Decap ms & KeyGen $\Delta P$ mW & Encap $\Delta P$ mW & Decap $\Delta P$ mW & (PK,CT) B \\ \midrule
+K-MCE348 & L1 & 297.526 & 0.460 & 55.604 & 966.2 & 156.2 & 410.7 & (261120,96) \\
+K-HQC128 & L1 & 22.152 & 44.625 & 73.131 & 412.6 & 441.6 & 566.8 & (2249,4433) \\
+K-ML512 & L1 & 0.191 & 0.148 & 0.153 & 125.9 & 153.9 & 172.7 & (800,768) \\
+K-MCE460 & L3 & 972.453 & 0.857 & 89.434 & 1075.7 & 279.6 & 485.1 & (524160,156) \\
+K-HQC192 & L3 & 67.430 & 135.390 & 211.278 & 501.2 & 650.9 & 731.5 & (4522,8978) \\
+K-ML768 & L3 & 0.223 & 0.175 & 0.181 & 149.4 & 185.9 & 205.7 & (1184,1088) \\
+K-MCE819 & L5 & 6901.609 & 1.856 & 209.313 & 1092.6 & 301.2 & 639.1 & (1357824,208) \\
+K-HQC256 & L5 & 123.836 & 250.537 & 392.216 & 646.9 & 782.9 & 819.0 & (7245,14421) \\
+K-ML1024 & L5 & 0.269 & 0.212 & 0.225 & 154.4 & 180.7 & 177.5 & (1568,1568) \\
+\bottomrule\end{tabular}
+\label{tab:kem-primitives-latest-manual}
+\end{table*}
+
+ML-KEM remains the lowest-latency KEM family at all levels (sub-millisecond keygen/encap/decap), while HQC introduces two-order-of-magnitude higher encapsulation/decapsulation cost and Classic McEliece shifts most cost into very large key generation time. At L5, Classic McEliece key generation reaches multi-second scale (6901.609 ms), showing that KEM choice dominates handshake setup variability even when decapsulation remains below 210 ms.
+
+\subsection{Digital Signature Primitives (Latest Individual Benchmarks, 1.8GHz)}
+\begin{table*}[t]
+\centering
+\caption{Signature primitive metrics from the latest individual raw benchmarks. $\Delta P = P_{mean}-P_{idle}$ with $P_{idle}=3309\,\mathrm{mW}$.}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llrrrrrrr@{}}\toprule
+Alias & NIST & KeyGen ms & Sign ms & Verify ms & KeyGen $\Delta P$ mW & Sign $\Delta P$ mW & Verify $\Delta P$ mW & Sig B \\ \midrule
+S-F512 & L1 & 17.722 & 0.773 & 0.188 & 326.9 & 255.4 & 238.8 & 654 \\
+S-DSA44 & L1 & 0.368 & 0.975 & 0.324 & 245.8 & 279.5 & 235.8 & 2420 \\
+S-SP128s & L1 & 193.609 & 1466.336 & 1.589 & 729.7 & 783.7 & 285.7 & 7856 \\
+S-DSA65 & L3 & 0.551 & 1.212 & 0.476 & 240.9 & 268.9 & 240.2 & 3309 \\
+S-SP192s & L3 & 282.538 & 2610.427 & 2.275 & 797.1 & 763.8 & 303.3 & 16224 \\
+S-F1024 & L5 & 49.016 & 1.441 & 0.275 & 439.3 & 250.4 & 240.0 & 1267 \\
+S-DSA87 & L5 & 0.739 & 1.626 & 0.718 & 227.0 & 268.1 & 235.2 & 4627 \\
+S-SP256s & L5 & 186.472 & 2323.760 & 3.277 & 715.1 & 790.5 & 255.0 & 29792 \\
+\bottomrule\end{tabular}
+\label{tab:sig-primitives-latest-manual}
+\end{table*}
+
+Falcon and ML-DSA signatures stay in low-millisecond ranges for sign/verify across levels, whereas SPHINCS+ presents a clear signing-latency step increase (1466--2610 ms) with comparatively small verify times. This preserves a consistent practical split between fast lattice signatures and hash-based signatures with much higher signer-side runtime cost.
+
+\subsection{AEAD on MAVLink Packet Sizes (RPi4 Power+Latency Run)}
+Using the updated Pi-side benchmark \texttt{power\_aead\_benchmark.csv}, we report MAVLink-relevant payload classes: 9B (heartbeat), 54B (attitude/IMU), and 263B (max standard MAVLink v2 payload).
+\begin{table*}[t]
+\centering
+\caption{AEAD latency, throughput, and energy per operation for MAVLink packet sizes on Raspberry Pi 4.}
+\footnotesize
+\setlength{\tabcolsep}{2.6pt}
+\begin{tabular}{@{}llrrrrrrrrr@{}}\toprule
+Alias & Payload B & Enc $\mu$s & Dec $\mu$s & Enc MB/s & Dec MB/s & Enc W & Dec W & Enc $\mu$J/op & Dec $\mu$J/op & RT $\mu$J \\ \midrule
+A-AG & 9 & 4.81 & 4.46 & 1.87 & 2.02 & 3.033 & 3.025 & 17.51 & 12.85 & 30.36 \\
+A-AG & 54 & 5.79 & 5.51 & 9.33 & 9.81 & 3.017 & 3.178 & 20.38 & 17.38 & 37.76 \\
+A-AG & 263 & 9.80 & 9.59 & 26.83 & 27.41 & 3.078 & 2.983 & 32.81 & 28.65 & 61.45 \\
+A-CP & 9 & 5.17 & 4.99 & 1.74 & 1.80 & 3.036 & 2.992 & 18.27 & 13.63 & 31.91 \\
+A-CP & 54 & 5.25 & 5.05 & 10.29 & 10.70 & 3.300 & 2.993 & 19.99 & 14.17 & 34.16 \\
+A-CP & 263 & 6.54 & 6.49 & 40.24 & 40.53 & 3.037 & 3.036 & 22.35 & 18.60 & 40.95 \\
+A-AS & 9 & 11.36 & 11.16 & 0.79 & 0.81 & 2.970 & 3.040 & 49.13 & 42.41 & 91.53 \\
+A-AS & 54 & 11.69 & 11.79 & 4.62 & 4.58 & 3.363 & 3.041 & 55.62 & 44.44 & 100.06 \\
+A-AS & 263 & 12.87 & 13.42 & 20.43 & 19.59 & 3.018 & 3.132 & 54.28 & 50.26 & 104.54 \\
+\bottomrule\end{tabular}
+\label{tab:aead-mavlink-power-latency}
+\end{table*}
+
+For MAVLink-sized packets, AES-GCM and ChaCha20-Poly1305 remain in single-digit microseconds for small payloads and below 10 $\mu$s at 263B for AES-GCM and 6.54 $\mu$s for ChaCha20-Poly1305 encryption. Ascon-128a is consistently slower (11.36--12.87 $\mu$s encrypt) and carries the highest round-trip energy (91.53--104.54 $\mu$J), confirming a throughput/energy penalty on this ARM target despite remaining within feasible telemetry timing.
+
+\subsection{Impact of DDoS Modes on PQC Runtime (Suite Aggregate)}
+\begin{table*}[t]
+\centering
+\caption{Average suite runtime by NIST level with no attack and under attack modes. Values are aggregated from per-suite records in \texttt{bench\_ddos\_results/20260302\_135859/comparison.json}.}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrr@{}}\toprule
+NIST & No-DDoS ms & XGBoost ms & TST ms & $\Delta_{\text{XGB}}$ ms & $\Delta_{\text{TST}}$ ms & Suites \\ \midrule
+L1 & 699.37 & 688.86 & 901.32 & -10.51 & +201.95 & 27 \\
+L3 & 1939.10 & 1852.59 & 2791.27 & -86.51 & +852.17 & 18 \\
+L5 & 6582.57 & 4577.05 & 6527.46 & -2005.52 & -55.11 & 27 \\
+\bottomrule\end{tabular}
+\label{tab:ddos-impact-on-pqc}
+\end{table*}
+
+Under detector load, TST introduces the largest runtime inflation for L1 and L3 aggregates ($+201.95$ ms and $+852.17$ ms). XGBoost means are slightly below no-DDoS means in all three levels in this aggregate view, indicating no systematic runtime penalty from the lighter detector path at campaign scale. For L5, TST aggregate runtime remains close to baseline ($-55.11$ ms), showing strong suite-level variance rather than uniform slowdown.
+
+\subsection{Impact of PQC Level on DDoS Detector Cost (Suite Aggregate)}
+\begin{table*}[t]
+\centering
+\caption{Detector cost under PQC load by NIST level. Aggregated from \texttt{bench\_ddos\_results/20260302\_135859/comparison.json} per-suite records. Throughput is handshake throughput (Hz).}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lrrrrrrrrr@{}}\toprule
+NIST & CPU No/XGB/TST \% & $\Delta$CPU XGB/TST pp & Power No/XGB/TST mW & $\Delta$Power XGB/TST mW & Throughput No/XGB/TST Hz & Suites \\ \midrule
+L1 & 21.02 / 46.21 / 89.39 & +25.19 / +68.37 & 3078.56 / 4003.89 / 4107.60 & +925.32 / +1029.03 & 22.043 / 21.464 / 8.227 & 27 \\
+L3 & 22.87 / 48.10 / 89.64 & +25.24 / +66.77 & 3038.81 / 3996.40 / 3983.94 & +957.59 / +945.13 & 13.406 / 13.274 / 5.721 & 18 \\
+L5 & 22.71 / 48.16 / 89.29 & +25.45 / +66.58 & 3083.86 / 4019.39 / 4113.55 & +935.53 / +1029.69 & 17.356 / 17.191 / 6.356 & 27 \\
+\bottomrule\end{tabular}
+\label{tab:pqc-impact-on-ddos}
+\end{table*}
+
+From the detector perspective, moving from no detector to XGBoost adds about $+25$ CPU percentage points across all NIST levels, while TST adds about $+66$ to $+68$ points. Power increases are similarly stable across levels (about $+0.93$ to $+1.03$ W). Throughput reduction is concentrated in TST mode, where mean handshake throughput drops to 8.227 Hz (L1), 5.721 Hz (L3), and 6.356 Hz (L5).
+
+\subsection{Scheduler Safety Thresholds and Detector Constraints}
+\begin{table*}[t]
+\centering
+\caption{MDEAS scheduler constants and cross-axis constraints extracted from \texttt{sscheduler/policy.py}.}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}ll@{}}\toprule
+Category & Code-defined value \\ \midrule
+Battery thresholds & warn $=15200$ mV, low $=14800$ mV, critical $=14000$ mV, rate-warn $=500$ mV/min \\
+Thermal thresholds & warn $=70.0^{\circ}$C, critical $=80.0^{\circ}$C, rate-warn $=5.0^{\circ}$C/min \\
+Detector overhead (NONE) & $\Delta P=0.00$ W, $\Delta T=0.0^{\circ}$C, $\Delta$CPU $=0$ pp, warmup $=0.0$ s \\
+Detector overhead (XGBOOST) & $\Delta P=0.95$ W, $\Delta T=4.8^{\circ}$C, $\Delta$CPU $=35$ pp, warmup $=10.0$ s, max baseline temp $=75.0^{\circ}$C \\
+Detector overhead (TST) & $\Delta P=1.97$ W, $\Delta T=10.7^{\circ}$C, $\Delta$CPU $=91$ pp, warmup $=5.0$ s, max baseline temp $=69.0^{\circ}$C \\
+Cross-axis guard & Forbidden with TST: \{ascon128a\}; discouraged with TST: \{classicmceliece348864, classicmceliece460896, classicmceliece8192128\} \\
+Forbidden KEM+SIG pairs & \{(classicmceliece348864,sphincs128s), (classicmceliece460896,sphincs192s), (classicmceliece8192128,sphincs256s)\} (+ listed cross-level variants) \\
+\bottomrule\end{tabular}
+\label{tab:scheduler-thresholds-constraints}
+\end{table*}
+
+These scheduler constants define the enforceable operating envelope used by MDEAS at runtime: hard thermal/battery gates, detector-specific warmup and activation ceilings, and explicit cross-axis prohibitions (notably Ascon with TST). As a result, the policy space is bounded by measurable constraints rather than post-hoc heuristic selection.
+
+\clearpage

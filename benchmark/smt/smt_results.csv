@@ -1,0 +1,6 @@
+Metric,Mean (ms),Median (ms),Min (ms),Max (ms),StdDev (ms)
+tree_initialization_ms,0.000348,0.0003,0.0002,0.0034,0.000373
+node_registration_ms,0.570387,0.54955,0.5127,0.7088,0.060889
+proof_generation_ms,0.18142,0.1708,0.162,0.489,0.034975
+proof_verification_ms,0.253677,0.23145,0.2214,0.6608,0.061975
+invalid_proof_rejection_ms,0.246444,0.23605,0.2232,0.437,0.032888

@@ -1,0 +1,119 @@
+<mxfile host="app.diagrams.net" modified="2026-05-24T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="scheduler-state-diagram" name="Scheduler State Machine">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="Adaptive PQ MAVLink Scheduler State Machine" style="text;html=1;strokeColor=none;fillColor=none;fontSize=24;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="320" y="30" width="760" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="subtitle" value="Userspace controller on Raspberry Pi: observes platform/link/tunnel state, selects crypto + detector + OS hints" style="text;html=1;strokeColor=none;fillColor=none;fontSize=13;fontColor=#4B5563;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="270" y="70" width="860" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="init" value="INIT&#xa;Load config&#xa;Discover runtime PQ suites" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#E0F2FE;strokeColor=#0284C7;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="150" width="190" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="observe" value="OBSERVE&#xa;Read status JSON&#xa;Sample CPU/temp/mem/disk&#xa;Compute packet/drop rates" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ECFDF5;strokeColor=#059669;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="140" width="230" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="classify" value="CLASSIFY CONDITIONS&#xa;unsafe? stressed? attack? stable?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FEF3C7;strokeColor=#D97706;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="130" width="220" height="120" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="emergency" value="EMERGENCY&#xa;L1 suite&#xa;low-cost AEAD&#xa;detector: none&#xa;governor: powersave" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FEE2E2;strokeColor=#DC2626;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="120" width="210" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="defense" value="DEFENSE&#xa;L3 suite&#xa;detector: TST&#xa;governor: performance&#xa;attack-response mode" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFE4E6;strokeColor=#E11D48;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="270" width="210" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="eco" value="ECO&#xa;L1 suite&#xa;detector: XGBoost&#xa;governor: powersave&#xa;stress-reduction mode" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#DCFCE7;strokeColor=#16A34A;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="420" width="210" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="nominal" value="NOMINAL&#xa;L3 suite&#xa;detector: XGBoost&#xa;governor: schedutil&#xa;default flight mode" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#DBEAFE;strokeColor=#2563EB;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="570" width="210" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="secure" value="SECURE&#xa;L5 suite&#xa;stronger AEAD&#xa;detector: XGBoost&#xa;only after stable period" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="720" width="210" height="110" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="busy" value="CONTROL PLANE BUSY?&#xa;pending suite or active rekey" style="rhombus;whiteSpace=wrap;html=1;fillColor=#F3F4F6;strokeColor=#6B7280;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="650" y="410" width="220" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="action" value="ACTION SELECTION&#xa;HOLD, REKEY, DETECTOR, OS_HINTS" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#F8FAFC;strokeColor=#475569;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="370" y="420" width="220" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="apply" value="APPLY IF --apply&#xa;Send TCP rekey JSON&#xa;Start/stop detector&#xa;Set governor/affinity/nice" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FAE8FF;strokeColor=#A21CAF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="110" y="400" width="220" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="logwait" value="LOG + WAIT&#xa;Append JSONL decision&#xa;Sleep interval&#xa;Loop again" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#F1F5F9;strokeColor=#64748B;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="110" y="620" width="220" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend" value="Priority order: unsafe state &gt; attack signal &gt; stressed platform/link &gt; stable operation&#xa;Safety guards: no rekey while control plane busy, cooldown between rekeys, minimum uptime before normal upgrades" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#CBD5E1;fontSize=12;fontColor=#334155;" vertex="1" parent="1">
+          <mxGeometry x="470" y="820" width="470" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#334155;" edge="1" parent="1" source="init" target="observe">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#334155;" edge="1" parent="1" source="observe" target="classify">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e3" value="unsafe" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#DC2626;fontSize=12;fontStyle=1;" edge="1" parent="1" source="classify" target="emergency">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="attack and enough headroom" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#E11D48;fontSize=12;fontStyle=1;" edge="1" parent="1" source="classify" target="defense">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="stressed or poor link" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#16A34A;fontSize=12;fontStyle=1;" edge="1" parent="1" source="classify" target="eco">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="stable &lt; threshold" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#2563EB;fontSize=12;fontStyle=1;" edge="1" parent="1" source="classify" target="nominal">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" value="stable &gt;= threshold" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#7C3AED;fontSize=12;fontStyle=1;" edge="1" parent="1" source="classify" target="secure">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e8" value="target profile selected" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#64748B;fontSize=12;" edge="1" parent="1" source="emergency" target="busy">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#64748B;" edge="1" parent="1" source="defense" target="busy">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#64748B;" edge="1" parent="1" source="eco" target="busy">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#64748B;" edge="1" parent="1" source="nominal" target="busy">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#64748B;" edge="1" parent="1" source="secure" target="busy">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e13" value="yes: HOLD" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#6B7280;fontSize=12;fontStyle=1;" edge="1" parent="1" source="busy" target="logwait">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e14" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#334155;fontSize=12;fontStyle=1;" edge="1" parent="1" source="busy" target="action">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e15" value="dry-run or apply result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#334155;fontSize=12;" edge="1" parent="1" source="action" target="apply">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#334155;" edge="1" parent="1" source="apply" target="logwait">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e17" value="next interval" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;strokeColor=#334155;fontSize=12;" edge="1" parent="1" source="logwait" target="observe">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="220" y="770"/>
+              <mxPoint x="445" y="770"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

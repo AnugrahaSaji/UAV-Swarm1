@@ -1,0 +1,44 @@
+\begin{table*}[!t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\sisetup{group-separator={,}, group-minimum-digits=4, round-mode=places}
+\caption{KEM primitive performance and power overhead on Raspberry Pi~4 (BCM2711 @ 1.8\,GHz, \texttt{performance} governor, 200 iterations, INA219 power monitoring, $P_\mathrm{idle} = 3309$\,mW).}
+\label{tab:kem-primitives}
+\begin{tabular}{@{}l
+  S[table-format=4.3, round-precision=3]
+  S[table-format=3.3, round-precision=3]
+  S[table-format=3.3, round-precision=3]
+  S[table-format=4.1, round-precision=1]
+  S[table-format=3.1, round-precision=1]
+  S[table-format=3.1, round-precision=1]
+  r r r r@{}}
+\toprule
+{Algorithm} &
+  {KeyGen} & {Encaps} & {Decaps} &
+  {$\Delta P_\mathrm{kg}$} & {$\Delta P_\mathrm{enc}$} & {$\Delta P_\mathrm{dec}$} &
+  {PK} & {SK} & {CT} & {SS} \\
+& {(ms)} & {(ms)} & {(ms)} &
+  {(mW)} & {(mW)} & {(mW)} &
+  {(B)} & {(B)} & {(B)} & {(B)} \\
+\midrule
+\multicolumn{11}{@{}l}{\textit{NIST Security Level 1}} \\
+\addlinespace[2pt]
+ML-KEM-512              & 0.191    & 0.148   & 0.153   & 125.9  & 153.9  & 172.7  & 800      & 1\,632   & 768     & 32 \\
+HQC-128                 & 22.152   & 44.625  & 73.131  & 412.6  & 441.6  & 566.8  & 2\,249   & ---      & 4\,433  & 32 \\
+Classic-McEliece-348864 & 297.526  & 0.460   & 55.604  & 966.2  & 156.2  & 410.7  & 261\,120 & 6\,492   & 96      & 32 \\
+\midrule
+\multicolumn{11}{@{}l}{\textit{NIST Security Level 3}} \\
+\addlinespace[2pt]
+ML-KEM-768              & 0.223    & 0.175   & 0.181   & 149.4  & 185.9  & 205.7  & 1\,184   & 2\,400   & 1\,088  & 32 \\
+HQC-192                 & 67.430   & 135.390 & 211.278 & 501.2  & 650.9  & 731.5  & 4\,522   & ---      & 8\,978  & 32 \\
+Classic-McEliece-460896 & 972.453  & 0.857   & 89.434  & 1075.7 & 279.6  & 485.1  & 524\,160 & 13\,608  & 156     & 32 \\
+\midrule
+\multicolumn{11}{@{}l}{\textit{NIST Security Level 5}} \\
+\addlinespace[2pt]
+ML-KEM-1024             & 0.269    & 0.212   & 0.225   & 154.4  & 180.7  & 177.5  & 1\,568   & 3\,168   & 1\,568  & 32 \\
+HQC-256                 & 123.836  & 250.537 & 392.216 & 646.9  & 782.9  & 819.0  & 7\,245   & ---      & 14\,421 & 32 \\
+Classic-McEliece-8192128 & 6901.609 & 1.856  & 209.313 & 1092.6 & 301.2  & 639.1  & 1\,357\,824 & 14\,120 & 208   & 32 \\
+\bottomrule
+\end{tabular}
+\end{table*}

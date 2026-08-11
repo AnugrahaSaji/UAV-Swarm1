@@ -1,0 +1,205 @@
+% references.bib — VTC2026-Fall paper bibliography
+
+% --- NIST Post-Quantum Standards ---
+
+@techreport{nist-fips203,
+  author      = {{National Institute of Standards and Technology}},
+  title       = {{FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism Standard (ML-KEM)}},
+  institution = {NIST},
+  year        = {2024},
+  type        = {Federal Information Processing Standards Publication},
+}
+
+@techreport{nist-fips204,
+  author      = {{National Institute of Standards and Technology}},
+  title       = {{FIPS 204: Module-Lattice-Based Digital Signature Standard (ML-DSA)}},
+  institution = {NIST},
+  year        = {2024},
+  type        = {Federal Information Processing Standards Publication},
+}
+
+@techreport{nist-fips205,
+  author      = {{National Institute of Standards and Technology}},
+  title       = {{FIPS 205: Stateless Hash-Based Digital Signature Standard (SLH-DSA)}},
+  institution = {NIST},
+  year        = {2024},
+  type        = {Federal Information Processing Standards Publication},
+}
+
+% --- Algorithm Specifications ---
+
+@inproceedings{kyber,
+  author    = {Avanzi, Roberto and Bos, Joppe and Ducas, L{\'e}o and Kiltz, Eike and Lepoint, Tancr{\`e}de and Lyubashevsky, Vadim and Schanck, John M. and Schwabe, Peter and Seiler, Gregor and Stehl{\'e}, Damien},
+  title     = {{CRYSTALS-Kyber: A CCA-Secure Module-Lattice-Based KEM}},
+  booktitle = {IEEE European Symposium on Security and Privacy (EuroS\&P)},
+  year      = {2018},
+  pages     = {353--367},
+}
+
+@inproceedings{dilithium,
+  author    = {Ducas, L{\'e}o and Kiltz, Eike and Lepoint, Tancr{\`e}de and Lyubashevsky, Vadim and Schwabe, Peter and Seiler, Gregor and Stehl{\'e}, Damien},
+  title     = {{CRYSTALS-Dilithium: A Lattice-Based Digital Signature Scheme}},
+  booktitle = {IACR Transactions on Cryptographic Hardware and Embedded Systems},
+  year      = {2018},
+  volume    = {2018},
+  number    = {1},
+  pages     = {238--268},
+}
+
+@inproceedings{falcon,
+  author    = {Fouque, Pierre-Alain and Hoffstein, Jeffrey and Kirchner, Paul and Lyubashevsky, Vadim and Pornin, Thomas and Prest, Thomas and Ricosset, Thomas and Seiler, Gregor and Whyte, William and Zhang, Zhenfei},
+  title     = {{Falcon: Fast-Fourier Lattice-based Compact Signatures over NTRU}},
+  booktitle = {NIST PQC Submission},
+  year      = {2020},
+}
+
+@article{sphincsplus,
+  author  = {Bernstein, Daniel J. and H{\"u}lsing, Andreas and K{\"o}lbl, Stefan and Niederhagen, Ruben and Rijneveld, Joost and Schwabe, Peter},
+  title   = {{The SPHINCS+ Signature Framework}},
+  journal = {IACR Cryptology ePrint Archive},
+  year    = {2019},
+  number  = {2019/1086},
+}
+
+@article{hqc,
+  author  = {Aguilar Melchor, Carlos and Aragon, Nicolas and Bettaieb, Slim and Bidoux, Lo{\"i}c and Blazy, Olivier and Deneuville, Jean-Christophe and Gaborit, Philippe and Z{\'e}mor, Gilles},
+  title   = {{HQC: Hamming Quasi-Cyclic}},
+  journal = {NIST PQC Round 4 Submission},
+  year    = {2023},
+}
+
+@article{mceliece,
+  author  = {Bernstein, Daniel J. and Chou, Tung and Lange, Tanja and von Maurich, Ingo and Misoczki, Rafael and Niederhagen, Ruben and Persichetti, Edoardo and Peters, Christiane and Schwabe, Peter and Sendrier, Nicolas and Szefer, Jakub and Wang, Wen},
+  title   = {{Classic McEliece: Conservative Code-Based Cryptography}},
+  journal = {NIST PQC Round 4 Submission},
+  year    = {2023},
+}
+
+% --- Symmetric Cryptography ---
+
+@inproceedings{ascon,
+  author    = {Dobraunig, Christoph and Eichlseder, Maria and Mendel, Florian and Schl{\"a}ffer, Martin},
+  title     = {{Ascon v1.2: Lightweight Authenticated Encryption and Hashing}},
+  booktitle = {Journal of Cryptology},
+  year      = {2021},
+  volume    = {34},
+  number    = {3},
+}
+
+@misc{rfc8439,
+  author       = {Nir, Yoav and Langley, Adam},
+  title        = {{ChaCha20 and Poly1305 for IETF Protocols}},
+  howpublished = {RFC 8439},
+  year         = {2018},
+  publisher    = {IETF},
+}
+
+@misc{rfc5869,
+  author       = {Krawczyk, Hugo and Eronen, Pasi},
+  title        = {{HMAC-based Extract-and-Expand Key Derivation Function (HKDF)}},
+  howpublished = {RFC 5869},
+  year         = {2010},
+  publisher    = {IETF},
+}
+
+% --- Quantum Computing ---
+
+@inproceedings{shor1994,
+  author    = {Shor, Peter W.},
+  title     = {{Algorithms for Quantum Computation: Discrete Logarithms and Factoring}},
+  booktitle = {Proceedings 35th Annual Symposium on Foundations of Computer Science},
+  year      = {1994},
+  pages     = {124--134},
+  publisher = {IEEE},
+}
+
+@inproceedings{grover1996,
+  author    = {Grover, Lov K.},
+  title     = {{A Fast Quantum Mechanical Algorithm for Database Search}},
+  booktitle = {Proceedings of the Twenty-Eighth Annual ACM Symposium on Theory of Computing},
+  year      = {1996},
+  pages     = {212--219},
+}
+
+% --- MAVLink & ArduPilot ---
+
+@misc{mavlink-spec,
+  author       = {{MAVLink Development Team}},
+  title        = {{MAVLink Protocol Specification v2.0}},
+  howpublished = {\url{https://mavlink.io/en/}},
+  year         = {2024},
+}
+
+@misc{ardupilot,
+  author       = {{ArduPilot Development Team}},
+  title        = {{ArduPilot: Versatile, Trusted, Open Autopilot Software}},
+  howpublished = {\url{https://ardupilot.org/}},
+  year         = {2024},
+}
+
+% --- Libraries ---
+
+@misc{liboqs,
+  author       = {{Open Quantum Safe Project}},
+  title        = {{liboqs: An Open-Source C Library for Quantum-Safe Cryptographic Algorithms}},
+  howpublished = {\url{https://openquantumsafe.org/}},
+  year         = {2024},
+}
+
+% --- Hardware ---
+
+@misc{ina219,
+  author       = {{Texas Instruments}},
+  title        = {{INA219 Bidirectional Current/Power Monitor with I2C Interface}},
+  howpublished = {\url{https://www.ti.com/product/INA219}},
+  year         = {2024},
+}
+
+% --- Related Work ---
+
+@article{drone-security-survey,
+  author  = {Altawy, Riham and Youssef, Amr M.},
+  title   = {{Security, Privacy, and Safety Aspects of Civilian Drones: A Survey}},
+  journal = {ACM Transactions on Cyber-Physical Systems},
+  year    = {2017},
+  volume  = {1},
+  number  = {2},
+  pages   = {1--25},
+}
+
+@inproceedings{drone-pqc-analysis,
+  author    = {Pham, Anh T. and Vakilinia, Iman},
+  title     = {{Post-Quantum Cryptography for UAV Communication Systems}},
+  booktitle = {IEEE International Conference on Communications (ICC)},
+  year      = {2023},
+}
+
+@article{pqm4,
+  author  = {Kannwischer, Matthias J. and Rijneveld, Joost and Schwabe, Peter and Stoffelen, Ko},
+  title   = {{pqm4: Testing and Benchmarking NIST PQC on ARM Cortex-M4}},
+  journal = {IACR Cryptology ePrint Archive},
+  year    = {2019},
+  number  = {2019/844},
+}
+
+@misc{rosenpass,
+  author       = {Wussler, Karolin and Hammell, Benjamin},
+  title        = {{Rosenpass: A Formally Verified, Post-Quantum Secure VPN}},
+  howpublished = {\url{https://rosenpass.eu/}},
+  year         = {2023},
+}
+
+@techreport{nist-round4,
+  author      = {{National Institute of Standards and Technology}},
+  title       = {{Status Report on the Fourth Round of the NIST Post-Quantum Cryptography Standardization Process}},
+  institution = {NIST},
+  year        = {2024},
+  type        = {Internal Report (IR 8545)},
+}
+
+@article{cross-platform-pqc,
+  author  = {Sch{\"o}ffel, Markus and Lauer, Fabian and Zheng, Changyu and Paar, Christof},
+  title   = {{A Practical Performance Benchmark of Post-Quantum Cryptography Across Heterogeneous Computing Environments}},
+  journal = {Cryptology ePrint Archive},
+  year    = {2024},
+}

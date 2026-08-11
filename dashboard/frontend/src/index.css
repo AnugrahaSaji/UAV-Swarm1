@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for PQC Dashboard v3 */
+
+:root {
+  --color-verified: #10b981;
+  --color-conditional: #f59e0b;
+  --color-deprecated: #6b7280;
+  --color-missing: #9ca3af;
+  --color-integrity-risk: #ef4444;
+  --color-baseline: #3b82f6;
+  --color-ddos-light: #f59e0b;
+  --color-ddos-heavy: #ef4444;
+}
+
+body {
+  @apply bg-gray-900 text-gray-100;
+  font-feature-settings: 'tnum' on, 'lnum' on;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+/* Reliability badges */
+.badge-verified, .badge-green {
+  @apply bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs font-medium;
+}
+
+.badge-conditional {
+  @apply bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded text-xs font-medium;
+}
+
+.badge-deprecated {
+  @apply bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded text-xs font-medium;
+}
+
+.badge-missing {
+  @apply bg-gray-700 text-gray-500 px-2 py-0.5 rounded text-xs font-medium italic;
+}
+
+.badge-red {
+  @apply bg-red-500/20 text-red-400 px-2 py-0.5 rounded text-xs font-medium;
+}
+
+.badge-blue {
+  @apply bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-xs font-medium;
+}
+
+.badge-yellow {
+  @apply bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded text-xs font-medium;
+}
+
+/* Card styles */
+.card {
+  @apply bg-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700/50 p-5 shadow-lg;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  border-color: rgba(59, 130, 246, 0.15);
+}
+
+.card-header {
+  @apply text-lg font-semibold text-gray-100 mb-3;
+}
+
+/* Table styles */
+.data-table {
+  @apply w-full text-sm;
+}
+
+.data-table th {
+  @apply text-left text-gray-400 font-medium py-2 px-3 border-b border-gray-700 text-xs uppercase tracking-wider;
+}
+
+.data-table td {
+  @apply py-2 px-3 border-b border-gray-800/50;
+}
+
+.data-table tr:hover {
+  @apply bg-gray-700/30;
+}
+
+/* Input styles */
+.select-input {
+  @apply bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+}
+
+/* Disclaimer banner */
+.disclaimer-banner {
+  @apply bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-2 text-amber-400 text-sm;
+}
+
+/* Heatmap utility colors */
+.heatmap-low { color: #10b981; }
+.heatmap-mid { color: #f59e0b; }
+.heatmap-high { color: #ef4444; }
+
+/* Recharts tooltip override */
+.recharts-tooltip-wrapper {
+  z-index: 50 !important;
+}
+
+/* Animations */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}

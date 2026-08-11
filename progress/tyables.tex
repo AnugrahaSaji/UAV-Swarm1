@@ -1,0 +1,184 @@
+% Auto-generated local benchmark tables for the secure tunnel paper.
+% Requires: \usepackage{booktabs,longtable,graphicx}.
+% Measurement sources: bench_results_current10/ and logs/localhost_live_matrix/summary.json.
+
+\begin{table}[t]
+\centering
+\caption{Local host and measurement configuration used for the non-Pi benchmark pass.}
+\label{tab:local-hardware-context}
+\begin{tabular}{ll}
+\toprule
+Field & Value \\
+\midrule
+Host & lappy \\
+CPU & Intel64 Family 6 Model 154 Stepping 3, GenuineIntel \\
+OS / kernel & Windows 10 local host \\
+Python & 3.11.13 \\
+Git commit & \texttt{daa1131bcacf} \\
+Primitive iterations & 10 per operation \\
+Live RTT packets & 8 per suite \\
+Live E2E path & Localhost GCS/drone \texttt{core.run\_proxy} with UDP echo \\
+Live E2E AEAD & \texttt{aesgcm} for all 24 live suites \\
+INA219 power sensor & unavailable on this Windows host \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Local verification summary for the current core-only benchmark pass.}
+\label{tab:local-verification-summary}
+\begin{tabular}{lr}
+\toprule
+Check & Result \\
+\midrule
+KEM primitive profiles benchmarked & 9 / 9 \\
+Signature primitive profiles benchmarked & 8 / 8 \\
+AEAD primitive profiles benchmarked & 4 / 4 \\
+In-process handshake suites benchmarked & 24 / 24 \\
+Localhost live end-to-end suites successful & 24 / 24 \\
+Live matrix mean RTT & 1368.06~$\mu$s \\
+Observed proxy drops in corrected live matrix & 0 on both roles \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{KEM primitive costs on the local GCS host. Times are mean microseconds over 10 iterations.}
+\label{tab:kem-primitive-local}
+\begin{tabular}{lrrrrr}
+\toprule
+KEM & Keygen & Encap & Decap & PK bytes & SK bytes \\
+\midrule
+ML-KEM-512 & 39.81 & 28.29 & 29.45 & 800 & 1632 \\
+ML-KEM-768 & 48.79 & 37.20 & 52.63 & 1184 & 2400 \\
+ML-KEM-1024 & 65.38 & 50.23 & 57.31 & 1568 & 3168 \\
+HQC-128 & 1444.81 & 2889.76 & 4808.08 & 2249 & 2305 \\
+HQC-192 & 5032.89 & 9038.55 & 14027.30 & 4522 & 4586 \\
+HQC-256 & 8021.46 & 16609.93 & 25349.54 & 7245 & 7317 \\
+Classic-McEliece-348864 & 77256.32 & 103.97 & 18465.59 & 261120 & 6492 \\
+Classic-McEliece-460896 & 191787.83 & 134.95 & 43638.98 & 524160 & 13608 \\
+Classic-McEliece-8192128 & 801950.47 & 617.84 & 103776.60 & 1357824 & 14120 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Signature primitive costs on the local GCS host. Times are mean microseconds over 10 iterations.}
+\label{tab:sig-primitive-local}
+\begin{tabular}{lrrrrrr}
+\toprule
+Signature & Keygen & Sign & Verify & PK bytes & SK bytes & Sig bytes \\
+\midrule
+ML-DSA-44 & 89.17 & 199.11 & 68.69 & 1312 & 2560 & 2420 \\
+ML-DSA-65 & 135.69 & 325.55 & 106.23 & 1952 & 4032 & 3309 \\
+ML-DSA-87 & 176.74 & 461.18 & 171.24 & 2592 & 4896 & 4627 \\
+Falcon-512 & 5690.92 & 181.22 & 36.71 & 897 & 1281 & 659 \\
+Falcon-1024 & 17669.58 & 383.60 & 124.24 & 1793 & 2305 & 1273 \\
+SPHINCS+-SHA2-128s-simple & 83673.34 & 641122.18 & 603.36 & 32 & 64 & 7856 \\
+SPHINCS+-SHA2-192s-simple & 124826.13 & 1150643.36 & 922.73 & 48 & 96 & 16224 \\
+SPHINCS+-SHA2-256s-simple & 82134.06 & 994162.62 & 1326.95 & 64 & 128 & 29792 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table*}[t]
+\centering
+\caption{AEAD costs on the local GCS host. Entries are mean microseconds over 10 iterations; E = encrypt, D = decrypt.}
+\label{tab:aead-primitive-local}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrrrr}
+\toprule
+AEAD & E64 & D64 & E256 & D256 & E1024 & D1024 & E4096 & D4096 \\
+\midrule
+AES-256-GCM & 78.11 & 4.34 & 1.61 & 1.37 & 1.46 & 3.72 & 2.55 & 11.92 \\
+AES-256-CCM & 76.71 & 8.42 & 2.04 & 1.72 & 2.42 & 2.43 & 4.67 & 5.61 \\
+ChaCha20-Poly1305 & 54.83 & 1.78 & 2.37 & 1.86 & 2.28 & 2.30 & 3.70 & 3.48 \\
+Ascon-AEAD128 & 47.73 & 6.00 & 8.12 & 3.15 & 7.62 & 4.92 & 12.93 & 12.41 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\begin{longtable}{lllr}
+\caption{In-process full handshake microbenchmark across all 24 KEM$\times$signature suites. Times are mean microseconds over 10 iterations.}\label{tab:handshake-microbench-all} \\
+\toprule
+KEM & Signature & Level & Mean $\mu s$ \\
+\midrule
+\endfirsthead
+\toprule
+KEM & Signature & Level & Mean $\mu s$ \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+Classic-McEliece-348864 & Falcon-512 & L1 & 198104.21 \\
+Classic-McEliece-348864 & ML-DSA-44 & L1 & 180925.40 \\
+Classic-McEliece-348864 & SPHINCS+-SHA2-128s-simple & L1 & 777580.31 \\
+Classic-McEliece-460896 & ML-DSA-65 & L3 & 306438.56 \\
+Classic-McEliece-460896 & SPHINCS+-SHA2-192s-simple & L3 & 1490739.75 \\
+Classic-McEliece-8192128 & Falcon-1024 & L5 & 779662.38 \\
+Classic-McEliece-8192128 & ML-DSA-87 & L5 & 748736.23 \\
+Classic-McEliece-8192128 & SPHINCS+-SHA2-256s-simple & L5 & 1721305.85 \\
+HQC-128 & Falcon-512 & L1 & 9077.59 \\
+HQC-128 & ML-DSA-44 & L1 & 9100.46 \\
+HQC-128 & SPHINCS+-SHA2-128s-simple & L1 & 609008.25 \\
+HQC-192 & ML-DSA-65 & L3 & 29497.41 \\
+HQC-192 & SPHINCS+-SHA2-192s-simple & L3 & 1084391.84 \\
+HQC-256 & Falcon-1024 & L5 & 47966.71 \\
+HQC-256 & ML-DSA-87 & L5 & 47920.50 \\
+HQC-256 & SPHINCS+-SHA2-256s-simple & L5 & 969053.70 \\
+ML-KEM-1024 & Falcon-1024 & L5 & 682.95 \\
+ML-KEM-1024 & ML-DSA-87 & L5 & 898.32 \\
+ML-KEM-1024 & SPHINCS+-SHA2-256s-simple & L5 & 900925.71 \\
+ML-KEM-512 & Falcon-512 & L1 & 433.44 \\
+ML-KEM-512 & ML-DSA-44 & L1 & 466.22 \\
+ML-KEM-512 & SPHINCS+-SHA2-128s-simple & L1 & 582558.18 \\
+ML-KEM-768 & ML-DSA-65 & L3 & 720.12 \\
+ML-KEM-768 & SPHINCS+-SHA2-192s-simple & L3 & 1025202.87 \\
+\end{longtable}
+
+\begin{longtable}{lllrrrr}
+\caption{Localhost live end-to-end tunnel measurements for all 24 suites using the default runtime AEAD \texttt{aesgcm}. Handshake columns are milliseconds; RTT columns are microseconds.}\label{tab:live-e2e-matrix-all} \\
+\toprule
+KEM & Signature & Level & GCS HS ms & Drone HS ms & RTT mean $\mu s$ & RTT p95 $\mu s$ \\
+\midrule
+\endfirsthead
+\toprule
+KEM & Signature & Level & GCS HS ms & Drone HS ms & RTT mean $\mu s$ & RTT p95 $\mu s$ \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+Classic-McEliece-348864 & Falcon-512 & L1 & 194.2202 & 171.8744 & 963.31 & 1177.30 \\
+Classic-McEliece-348864 & ML-DSA-44 & L1 & 405.1737 & 405.8483 & 1022.75 & 1457.30 \\
+Classic-McEliece-348864 & SPHINCS+-SHA2-128s-simple & L1 & 1076.3116 & 1076.6516 & 873.02 & 1599.80 \\
+Classic-McEliece-460896 & ML-DSA-65 & L3 & 205.3602 & 206.5143 & 1654.31 & 2216.10 \\
+Classic-McEliece-460896 & SPHINCS+-SHA2-192s-simple & L3 & 1305.6733 & 1294.4570 & 1431.29 & 2232.20 \\
+Classic-McEliece-8192128 & Falcon-1024 & L5 & 349.3160 & 348.6932 & 1023.62 & 1353.60 \\
+Classic-McEliece-8192128 & ML-DSA-87 & L5 & 679.1180 & 658.5284 & 938.80 & 1452.50 \\
+Classic-McEliece-8192128 & SPHINCS+-SHA2-256s-simple & L5 & 2080.1123 & 2060.2542 & 1434.84 & 1948.70 \\
+HQC-128 & Falcon-512 & L1 & 17.4676 & 17.6440 & 1384.44 & 1921.90 \\
+HQC-128 & ML-DSA-44 & L1 & 34.5949 & 16.5607 & 1330.42 & 1753.00 \\
+HQC-128 & SPHINCS+-SHA2-128s-simple & L1 & 617.9660 & 618.2502 & 1414.49 & 2074.40 \\
+HQC-192 & ML-DSA-65 & L3 & 37.5571 & 37.7786 & 1584.20 & 1836.20 \\
+HQC-192 & SPHINCS+-SHA2-192s-simple & L3 & 1067.6585 & 1067.8998 & 1168.76 & 1701.20 \\
+HQC-256 & Falcon-1024 & L5 & 63.7146 & 63.9060 & 1357.40 & 1772.80 \\
+HQC-256 & ML-DSA-87 & L5 & 64.0030 & 53.3602 & 1452.36 & 1701.60 \\
+HQC-256 & SPHINCS+-SHA2-256s-simple & L5 & 961.3875 & 961.7488 & 1749.25 & 2188.20 \\
+ML-KEM-1024 & Falcon-1024 & L5 & 8.7617 & 8.9854 & 1215.12 & 1897.30 \\
+ML-KEM-1024 & ML-DSA-87 & L5 & 8.7191 & 8.8741 & 1752.69 & 2415.20 \\
+ML-KEM-1024 & SPHINCS+-SHA2-256s-simple & L5 & 1562.0926 & 1547.9712 & 1414.89 & 1920.30 \\
+ML-KEM-512 & Falcon-512 & L1 & 7.1637 & 7.3661 & 1468.19 & 2033.00 \\
+ML-KEM-512 & ML-DSA-44 & L1 & 21.7350 & 7.9854 & 1691.46 & 2052.20 \\
+ML-KEM-512 & SPHINCS+-SHA2-128s-simple & L1 & 603.1021 & 592.7417 & 1880.19 & 2837.70 \\
+ML-KEM-768 & ML-DSA-65 & L3 & 8.2048 & 8.4014 & 1243.23 & 2048.80 \\
+ML-KEM-768 & SPHINCS+-SHA2-192s-simple & L3 & 1046.0065 & 1021.4253 & 1384.51 & 2396.40 \\
+\end{longtable}
+
+% Notes:
+% 1. Live localhost suites were driven through direct GCS/drone proxy roles plus a UDP echo loopback, not the Windows MAVProxy wrapper.
+% 2. The live matrix reports zero proxy drops after excluding ignored Windows UDP WSAECONNRESET notifications from drop counters.
+% 3. AEAD agility is benchmarked independently above; suite IDs in the current core encode KEM+SIG only, and the live matrix used the default runtime AEAD token aesgcm.

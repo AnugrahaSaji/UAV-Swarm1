@@ -1,0 +1,37 @@
+End-to-End Validation Checklist for Telemetry Safety Gates
+
+Phase 1: Network & Firewall Verification
+----------------------------------------
+1. Verify UDP Port 52080 is open on Drone:
+   Command (Drone): sudo netstat -ulpn | grep 52080
+   Expected Output: udp 0 0 0.0.0.0:52080 ... python
+
+2. Verify GCS is sending telemetry packets:
+   Command (GCS): sudo tcpdump -i any udp port 52080
+   Expected Output: Continuous stream of packets to Drone IP
+
+Phase 2: "Doctor" Script Verification
+-------------------------------------
+1. Stop the main scheduler on Drone (to free the port):
+   Command: pkill -f sscheduler.sdrone
+
+2. Run the Doctor script:
+   Command: python3 scripts/telemetry_recv_test.py
+
+3. Observe Output:
+   Success: RX OK: seq=101 age=15.2ms size=850 suite=cs-mlkem768...
+   Failure: DROP: Packet from unauthorized IP (Check GCS_HOST in config)
+   Failure: DROP: Packet too large (Check MAX_PACKET_SIZE)
+
+Phase 3: Production Verification
+--------------------------------
+1. Restart Drone Scheduler:
+   Command: python3 -m sscheduler.sdrone
+
+2. Check Logs for Rejection:
+   Command: tail -f logs/sscheduler/drone/sdrone-ctrl.log
+   Check: Ensure no "Telemetry error" or "Dropped telemetry" messages appear under normal operation.
+
+3. Verify Telemetry in Drone Logic:
+   - The drone scheduler should log "Telemetry OK" or similar if debug logging is enabled.
+   - The system should successfully switch suites based on policy, which relies on telemetry for timing/coordination if configured.

@@ -1,0 +1,64 @@
+\documentclass[conference,10pt]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{fillbetween,statistics}
+\usetikzlibrary{patterns,patterns.meta,positioning}
+\usepackage{subcaption}
+
+% Paul Tol High Contrast palette — colour-blind & grayscale safe
+\definecolor{ptblue}{HTML}{004488}
+\definecolor{ptgold}{HTML}{DDAA33}
+\definecolor{ptrose}{HTML}{BB5566}
+\definecolor{ptblack}{HTML}{000000}
+\definecolor{ptgray}{HTML}{AAAAAA}
+
+% IEEE-style axis defaults
+\pgfplotsset{
+  every axis/.append style={
+    xlabel near ticks,
+    ylabel near ticks,
+    grid style={line width=.25pt, draw=gray!30},
+    minor grid style={line width=.1pt, draw=gray!20},
+    legend cell align=left,
+  },
+}
+
+% Stub out \cite so it doesn't error on missing .bib
+\renewcommand{\cite}[1]{[#1]}
+
+% tablenotes: render as a compact list below the tabular
+\newenvironment{tablenotes}{%
+  \par\vskip4pt\begin{list}{}{\footnotesize\setlength{\leftmargin}{0pt}%
+    \setlength{\itemsep}{0pt}\setlength{\parsep}{0pt}%
+    \setlength{\topsep}{0pt}\setlength{\partopsep}{0pt}}%
+}{%
+  \end{list}\vskip2pt
+}
+
+\usepackage{siunitx}
+\usepackage{colortbl}
+\sisetup{group-separator={,},per-mode=symbol,detect-weight=true,detect-family=true}
+
+\definecolor{viable}{RGB}{0,150,0}
+\definecolor{marginal}{RGB}{210,140,0}
+\definecolor{notviable}{RGB}{190,0,0}
+
+\begin{document}
+
+\title{Suite-Level Evaluation Test}
+\author{Test}
+\maketitle
+
+\input{results-suite.tex}
+
+\end{document}

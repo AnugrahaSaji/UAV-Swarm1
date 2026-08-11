@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .denv — Drone Environment Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# All drone-side network, SSH, and runtime values that vary per deployment.
+# Loaded by core/config.py at startup — keeps secrets and machine-specific
+# addresses out of source control.
+#
+# Copy this file to .denv.local for site overrides (git-ignored).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Network Addresses ────────────────────────────────────────────────────────
+# LAN IP for data/control/telemetry planes (wlan0 or eth0)
+DRONE_HOST_LAN=192.168.0.101
+TUNNEL_HOST_PROFILE=lan
+# Tailscale IP — SSH/Git maintenance ONLY (never for runtime traffic)
+DRONE_HOST_TAILSCALE=100.101.93.23
+
+# ── SSH Access ───────────────────────────────────────────────────────────────
+DRONE_SSH_USER=dev
+DRONE_SSH_PORT=22
+
+# ── Paths on Drone ───────────────────────────────────────────────────────────
+DRONE_PROJECT_PATH=~/secure-tunnel
+DRONE_VENV_PATH=~/cenv
+MAVPROXY_BINARY=/home/dev/cenv/bin/mavproxy.py
+DRONE_MONITOR_OUTPUT_BASE=/home/dev/research/output/drone
+DRONE_LOGS_REMOTE=~/research/logs/auto/drone
+
+# ── Pre-Shared Key ───────────────────────────────────────────────────────────
+# 32-byte hex PSK for handshake authentication. Empty = dev/test mode.
+DRONE_PSK=
+
+# ── Flight Controller ────────────────────────────────────────────────────────
+MAV_FC_DEVICE=/dev/ttyACM0
+MAV_FC_BAUD=57600
+
+# ── Power Monitoring ─────────────────────────────────────────────────────────
+DRONE_POWER_BACKEND=ina219
+DRONE_POWER_SAMPLE_HZ=1000
+INA219_I2C_BUS=1
+INA219_ADDR=0x40
+INA219_SHUNT_OHM=0.1
+
+# ── Ports (overrides for non-standard deployments) ───────────────────────────
+# TCP_HANDSHAKE_PORT=46000
+# UDP_DRONE_RX=46012
+# DRONE_CONTROL_PORT=48080
+# GCS_TELEMETRY_PORT=52080

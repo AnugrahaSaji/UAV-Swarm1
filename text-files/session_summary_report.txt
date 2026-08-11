@@ -1,0 +1,62 @@
+SESSION SUMMARY REPORT
+Date: December 28, 2025
+Topic: Secure Tunnel Telemetry & Network Validation
+
+1. PRESENT STATUS vs PREVIOUS STATE
+-----------------------------------
+Previous State:
+- The project had a basic scheduler structure but lacked a robust, secure telemetry link between GCS and Drone.
+- The receiver logic in `sscheduler/sdrone.py` was incomplete or missing security controls (IP filtering).
+- There were no isolated tools to verify network connectivity without running the full application stack.
+
+Present Status:
+- The Drone scheduler (`sdrone.py`) now has a fully implemented `TelemetryListener` with IP allow-listing and staleness tracking.
+- A "Doctor" test suite (`scripts/telemetry_*.py`) exists to validate the network layer independently.
+- The GCS-side sender logic has been verified locally.
+- Firewall requirements have been identified and commands generated.
+
+2. PROGRESS & COMPLETED TASKS
+-----------------------------
+[x] Configuration Verification:
+    - Confirmed IP addresses (GCS: 192.168.0.102, Drone: 192.168.0.105) and Port (52080) in `core/config.py`.
+
+[x] Code Implementation (Drone Side):
+    - Patched `sscheduler/sdrone.py` to include a secure UDP telemetry receiver.
+    - Integrated the receiver into the main `DroneScheduler` loop.
+
+[x] Tooling Creation:
+    - Created `scripts/telemetry_send_test.py` (GCS Sender Doctor).
+    - Created `scripts/telemetry_recv_test.py` (Drone Receiver Doctor).
+
+[x] Local Validation:
+    - Successfully ran `telemetry_send_test.py` on Windows, confirming the sender logic works and generates valid v1 schema packets.
+
+3. FEATURES IMPLEMENTED
+-----------------------
+A. Secure Telemetry Listener (`sscheduler/sdrone.py`)
+   - Class: `TelemetryListener`
+   - Feature: IP Allow-listing. The listener now accepts an `allowed_ip` argument and silently drops packets from any other source.
+   - Feature: Staleness Detection. Added `get_age_ms()` to calculate time since the last valid packet, enabling the scheduler to detect link loss.
+   - Feature: Threaded Execution. Runs in a daemon thread to avoid blocking the main scheduler loop.
+
+B. Network Validation Tools ("Doctor Scripts")
+   - `scripts/telemetry_send_test.py`: Generates synthetic telemetry traffic conforming to `uav.pqc.telemetry.v1` schema.
+   - `scripts/telemetry_recv_test.py`: Standalone receiver that validates Schema, IP source, and Sequence continuity.
+
+4. IMPLEMENTATION STRATEGY
+--------------------------
+- "Doctor" Pattern:
+  Instead of debugging the complex multi-process application (Scheduler + Proxy + MAVProxy), we created isolated scripts to validate the fundamental network layer first. This allows us to distinguish between code bugs and network/firewall issues.
+
+- Security-First Design:
+  The telemetry receiver was implemented with IP filtering from the start (`if addr[0] != self.allowed_ip: continue`) to prevent unauthorized control or spoofing attempts.
+
+- Observability:
+  The receiver exposes `last_update` timestamps, allowing the decision engine to make informed choices based on data freshness rather than just presence.
+
+5. RESULTS
+----------
+- The GCS sender script is functional and ready.
+- The Drone receiver code is updated and ready for deployment.
+- A clear path forward for network configuration (Firewall rules) has been established.
+- The system is prepared for the first end-to-end physical network test.

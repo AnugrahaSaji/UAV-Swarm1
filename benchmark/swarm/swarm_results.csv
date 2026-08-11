@@ -1,0 +1,11 @@
+Metric,Mean (ms),Median (ms),Min (ms),Max (ms),StdDev (ms)
+swarm_initialization_ms,2.335603,1.75655,1.2534,19.2385,2.61335
+drone_discovery_latency_ms,0.00195,0.0017,0.0014,0.0063,0.000777
+drone_join_latency_ms,0.083131,0.07515,0.0658,0.1751,0.022232
+cluster_formation_time_ms,0.124696,0.112725,0.0987,0.26265,0.033349
+heartbeat_rtt_ms,0.000815,0.0006,0.0005,0.0127,0.001241
+routing_lookup_latency_ms,0.001209,0.001,0.0009,0.009,0.000847
+packet_forwarding_latency_ms,0.005554,0.00475,0.0045,0.0271,0.003151
+cluster_leader_election_ms,0.142701,0.139,0.0905,0.4748,0.053832
+cluster_failover_latency_ms,0.10724,0.1022,0.0683,0.3006,0.035313
+re_parenting_latency_ms,0.052782,0.05445,0.0352,0.106,0.014059

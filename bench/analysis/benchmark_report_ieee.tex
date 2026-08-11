@@ -1,0 +1,950 @@
+% ============================================================================
+% POST-QUANTUM CRYPTOGRAPHY BENCHMARK REPORT
+% IEEE Conference Style - Comprehensive Analysis
+% ============================================================================
+\documentclass[conference,10pt]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Graphics path
+\graphicspath{{plots/}{plots_comprehensive/}}
+
+% SI units configuration
+\sisetup{
+    group-separator={,},
+    group-minimum-digits=4,
+    detect-all,
+}
+
+% Hyperref configuration
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue,
+}
+
+% Custom commands
+\newcommand{\algname}[1]{\textsc{#1}}
+\newcommand{\metric}[1]{\textit{#1}}
+\newcommand{\ms}{\,\text{ms}}
+\newcommand{\us}{\,\mu\text{s}}
+\newcommand{\ns}{\,\text{ns}}
+
+\begin{document}
+
+% ============================================================================
+% TITLE
+% ============================================================================
+\title{Comprehensive Performance Evaluation of\\Post-Quantum Cryptographic Algorithms\\on Resource-Constrained ARM Platforms}
+
+\author{
+\IEEEauthorblockN{Benchmark Analysis System}
+\IEEEauthorblockA{
+Automated Performance Evaluation\\
+Raspberry Pi 4 Model B Platform\\
+January 2026
+}
+}
+
+\maketitle
+
+% ============================================================================
+% ABSTRACT
+% ============================================================================
+\begin{abstract}
+This report presents a comprehensive performance evaluation of post-quantum cryptographic (PQC) algorithms on a resource-constrained ARM platform (Raspberry Pi 4 Model B). We evaluate nine Key Encapsulation Mechanisms (KEMs) across three families (ML-KEM, Classic McEliece, HQC) and eight digital signature schemes across three families (ML-DSA, Falcon, SPHINCS+). All algorithms are evaluated at multiple NIST security levels (L1, L3, L5). We measure key generation, encapsulation/signing, and decapsulation/verification operations with 200 iterations each, collecting mean, median, standard deviation, minimum, maximum, and 95th percentile statistics. Size metrics including public key, secret key, ciphertext, and signature sizes are recorded. All 98 benchmark files comprising 19,600 timing measurements achieved 100\% success rate. This document provides detailed statistical analysis, comparative visualizations, anomaly detection, and trade-off analysis without interpretive conclusions.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Post-Quantum Cryptography, NIST PQC, Performance Evaluation, ARM, Embedded Systems, ML-KEM, ML-DSA, Falcon, SPHINCS+, Classic McEliece, HQC
+\end{IEEEkeywords}
+
+% ============================================================================
+% I. INTRODUCTION
+% ============================================================================
+\section{Introduction}
+\label{sec:intro}
+
+\subsection{Motivation}
+The advent of quantum computing poses a significant threat to currently deployed cryptographic systems. NIST's Post-Quantum Cryptography Standardization process has selected several algorithms for standardization, and understanding their performance characteristics on resource-constrained platforms is critical for deployment planning.
+
+\subsection{Scope}
+This benchmark report evaluates:
+\begin{itemize}[noitemsep]
+    \item \textbf{9 KEM algorithms}: ML-KEM (512/768/1024), Classic McEliece (348864/460896/8192128), HQC (128/192/256)
+    \item \textbf{8 Signature algorithms}: ML-DSA (44/65/87), Falcon (512/1024), SPHINCS+ (128s/192s/256s)
+    \item \textbf{3 AEAD ciphers}: AES-256-GCM, ChaCha20-Poly1305, Ascon-128a
+    \item \textbf{23 Cipher suites}: Combinations for full handshake evaluation
+\end{itemize}
+
+\subsection{Document Organization}
+Section~\ref{sec:setup} describes the experimental setup. Section~\ref{sec:methodology} details the measurement methodology. Sections~\ref{sec:kem} and \ref{sec:sig} present KEM and signature benchmark results respectively. Section~\ref{sec:comparison} provides comparative analysis across algorithms and NIST levels. Section~\ref{sec:anomaly} discusses outliers and anomalies. Section~\ref{sec:tradeoff} analyzes size-timing trade-offs. Section~\ref{sec:suites} covers full handshake results.
+
+% ============================================================================
+% II. EXPERIMENTAL SETUP
+% ============================================================================
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Hardware Platform}
+
+\begin{table}[H]
+\centering
+\caption{Hardware Specifications}
+\label{tab:hardware}
+\begin{tabular}{@{}p{3cm}p{5cm}@{}}
+\toprule
+\textbf{Component} & \textbf{Specification} \\
+\midrule
+Device Model & Raspberry Pi 4 Model B Rev 1.5 \\
+System-on-Chip & Broadcom BCM2711 \\
+CPU & Quad-core ARM Cortex-A72 \\
+Architecture & ARMv8-A (64-bit) \\
+CPU Frequency & 1.8 GHz (max) \\
+L1 Cache & 32 KB I-cache, 32 KB D-cache per core \\
+L2 Cache & 1 MB shared \\
+Memory & 4 GB LPDDR4-3200 SDRAM \\
+Storage & microSD (Class 10) \\
+Frequency Governor & \texttt{ondemand} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textit{Data Source: \texttt{/proc/cpuinfo}, \texttt{/proc/device-tree/model}}
+
+\subsection{Software Environment}
+
+\begin{table}[H]
+\centering
+\caption{Software Versions}
+\label{tab:software}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Component} & \textbf{Version} \\
+\midrule
+Operating System & Debian GNU/Linux 12 (Bookworm) \\
+Linux Kernel & 6.12.47+rpt-rpi-v8 (aarch64) \\
+Python & 3.11.2 \\
+GCC & 12.2.0 \\
+liboqs-python & 0.14.0 \\
+liboqs (native) & 0.14.1-dev \\
+cryptography & 46.0.2 \\
+ascon & 0.0.9 \\
+NumPy & 2.2.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textit{Data Source: \texttt{bench\_results/environment.json}}
+
+\subsection{Repository State}
+
+\begin{table}[H]
+\centering
+\caption{Source Code State}
+\label{tab:git}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Attribute} & \textbf{Value} \\
+\midrule
+Git Commit & \texttt{49ed212352374881...} \\
+Branch & main \\
+Dirty State & Yes (uncommitted changes) \\
+Benchmark Timestamp & 2026-01-10T05:44:22Z \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================================
+% III. MEASUREMENT METHODOLOGY
+% ============================================================================
+\section{Measurement Methodology}
+\label{sec:methodology}
+
+\subsection{Timing Instrumentation}
+
+Each cryptographic operation is timed using two methods:
+
+\begin{enumerate}
+    \item \textbf{Performance Counter} (\texttt{time.perf\_counter\_ns()}): High-resolution monotonic clock, not affected by system time adjustments. This is the primary timing source for all reported results.
+    
+    \item \textbf{Wall Clock} (\texttt{time.time\_ns()}): Real-time clock for validation and cross-reference.
+\end{enumerate}
+
+\subsection{Iteration Parameters}
+
+\begin{table}[H]
+\centering
+\caption{Benchmark Configuration}
+\label{tab:config}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Iterations per operation & 200 \\
+Warm-up iterations & 0 (all iterations recorded) \\
+Inter-iteration delay & None \\
+CPU isolation & Not applied \\
+Process priority & Default \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Operations Measured}
+
+\begin{table}[H]
+\centering
+\caption{Cryptographic Operations per Algorithm Type}
+\label{tab:operations}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Algorithm Type} & \textbf{Operations Measured} \\
+\midrule
+Key Encapsulation (KEM) & \texttt{keygen}, \texttt{encapsulate}, \texttt{decapsulate} \\
+Digital Signature & \texttt{keygen}, \texttt{sign}, \texttt{verify} \\
+AEAD Cipher & \texttt{encrypt}, \texttt{decrypt} \\
+Cipher Suite & \texttt{full\_handshake} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Statistical Metrics Collected}
+
+For each operation, the following statistics are computed from the 200 timing samples:
+
+\begin{itemize}[noitemsep]
+    \item \textbf{Mean} ($\bar{x}$): Arithmetic average
+    \item \textbf{Median} ($\tilde{x}$): 50th percentile
+    \item \textbf{Standard Deviation} ($\sigma$): Sample standard deviation
+    \item \textbf{Minimum}: Fastest observed execution
+    \item \textbf{Maximum}: Slowest observed execution
+    \item \textbf{95th Percentile} (P95): Value below which 95\% of samples fall
+\end{itemize}
+
+\subsection{Size Metrics Collected}
+
+\begin{itemize}[noitemsep]
+    \item \textbf{Public Key Size}: Bytes required for public key storage
+    \item \textbf{Secret Key Size}: Bytes required for secret key storage
+    \item \textbf{Ciphertext/Signature Size}: Bytes of cryptographic output
+\end{itemize}
+
+% ============================================================================
+% IV. DATA SUMMARY
+% ============================================================================
+\section{Data Summary}
+\label{sec:summary}
+
+\subsection{Benchmark Coverage}
+
+\begin{table}[H]
+\centering
+\caption{Benchmark File Inventory}
+\label{tab:inventory}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Category} & \textbf{Files} & \textbf{Iterations} & \textbf{Success} \\
+\midrule
+KEM & 27 & 5,400 & 100.00\% \\
+Signature & 24 & 4,800 & 100.00\% \\
+AEAD & 24 & 4,800 & 100.00\% \\
+Cipher Suite & 23 & 4,600 & 100.00\% \\
+\midrule
+\textbf{Total} & \textbf{98} & \textbf{19,600} & \textbf{100.00\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Algorithm Coverage by NIST Level}
+
+\begin{table}[H]
+\centering
+\caption{Algorithms by NIST Security Level}
+\label{tab:nist_coverage}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Family} & \textbf{Level 1} & \textbf{Level 3} & \textbf{Level 5} \\
+\midrule
+ML-KEM & 512 & 768 & 1024 \\
+Classic McEliece & 348864 & 460896 & 8192128 \\
+HQC & 128 & 192 & 256 \\
+\midrule
+ML-DSA & 44 & 65 & 87 \\
+Falcon & 512 & -- & 1024 \\
+SPHINCS+ & 128s & 192s & 256s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================================
+% V. KEM BENCHMARK RESULTS
+% ============================================================================
+\section{Key Encapsulation Mechanism Results}
+\label{sec:kem}
+
+\subsection{ML-KEM (NIST FIPS 203)}
+
+ML-KEM is based on the Module Learning With Errors (MLWE) problem. It offers the smallest key and ciphertext sizes among the evaluated KEMs while maintaining competitive performance.
+
+\subsubsection{Key Generation Performance}
+
+\begin{table}[H]
+\centering
+\caption{ML-KEM Key Generation Timing (n=200)}
+\label{tab:mlkem_keygen}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Mean} & \textbf{Median} & \textbf{$\sigma$} & \textbf{Min} & \textbf{Max} & \textbf{P95} \\
+& (ms) & (ms) & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+ML-KEM-512 & 0.116 & 0.082 & 0.449 & 0.080 & 6.435 & 0.098 \\
+ML-KEM-768 & 0.111 & 0.107 & 0.040 & 0.106 & 0.664 & 0.116 \\
+ML-KEM-1024 & 0.142 & 0.136 & 0.029 & 0.134 & 0.510 & 0.163 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observations:}
+\begin{itemize}[noitemsep]
+    \item ML-KEM-512 shows the highest variance ($\sigma=0.449$) due to occasional system interference
+    \item Median values are more representative than mean due to outlier presence
+    \item Performance scales approximately linearly with security level
+\end{itemize}
+
+\subsubsection{Encapsulation Performance}
+
+\begin{table}[H]
+\centering
+\caption{ML-KEM Encapsulation Timing (n=200)}
+\label{tab:mlkem_encaps}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Mean} & \textbf{Median} & \textbf{$\sigma$} & \textbf{Min} & \textbf{Max} & \textbf{P95} \\
+& (ms) & (ms) & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+ML-KEM-512 & 0.066 & 0.062 & 0.027 & 0.060 & 0.341 & 0.072 \\
+ML-KEM-768 & 0.089 & 0.086 & 0.023 & 0.085 & 0.361 & 0.091 \\
+ML-KEM-1024 & 0.121 & 0.118 & 0.022 & 0.117 & 0.394 & 0.130 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Decapsulation Performance}
+
+\begin{table}[H]
+\centering
+\caption{ML-KEM Decapsulation Timing (n=200)}
+\label{tab:mlkem_decaps}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Mean} & \textbf{Median} & \textbf{$\sigma$} & \textbf{Min} & \textbf{Max} & \textbf{P95} \\
+& (ms) & (ms) & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+ML-KEM-512 & 0.071 & 0.067 & 0.022 & 0.065 & 0.355 & 0.084 \\
+ML-KEM-768 & 0.097 & 0.094 & 0.018 & 0.093 & 0.348 & 0.100 \\
+ML-KEM-1024 & 0.144 & 0.136 & 0.033 & 0.132 & 0.551 & 0.176 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Size Metrics}
+
+\begin{table}[H]
+\centering
+\caption{ML-KEM Size Metrics (bytes)}
+\label{tab:mlkem_sizes}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Public Key} & \textbf{Secret Key} & \textbf{Ciphertext} & \textbf{Shared Secret} \\
+\midrule
+ML-KEM-512 & 800 & 1,632 & 768 & 32 \\
+ML-KEM-768 & 1,184 & 2,400 & 1,088 & 32 \\
+ML-KEM-1024 & 1,568 & 3,168 & 1,568 & 32 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Classic McEliece}
+
+Classic McEliece is based on the Niederreiter cryptosystem using binary Goppa codes. It has the largest public keys but smallest ciphertexts.
+
+\subsubsection{Key Generation Performance}
+
+\begin{table}[H]
+\centering
+\caption{Classic McEliece Key Generation Timing (n=200)}
+\label{tab:mceliece_keygen}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Mean} & \textbf{Median} & \textbf{$\sigma$} & \textbf{Min} & \textbf{Max} & \textbf{P95} \\
+& (ms) & (ms) & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+348864 & 333.39 & 228.62 & 222.13 & 151.12 & 1524.76 & 775.10 \\
+460896 & 1114.67 & 911.52 & 774.42 & 465.01 & 5149.97 & 2623.10 \\
+8192128 & 8834.74 & 7065.81 & 6919.74 & 2467.11 & 36617.42 & 25241.50 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Critical Observation:} Classic McEliece key generation exhibits extreme variance. The 8192128 variant shows a maximum of 36.6 seconds versus a minimum of 2.5 seconds—a 14.8$\times$ ratio. This is due to the probabilistic nature of the Goppa code generation.
+
+\subsubsection{Encapsulation and Decapsulation}
+
+\begin{table}[H]
+\centering
+\caption{Classic McEliece Encapsulation/Decapsulation (n=200)}
+\label{tab:mceliece_ops}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Encaps Mean} & \textbf{Encaps Median} & \textbf{Decaps Mean} & \textbf{Decaps Median} \\
+& (ms) & (ms) & (ms) & (ms) \\
+\midrule
+348864 & 0.27 & 0.26 & 55.45 & 55.43 \\
+460896 & 0.66 & 0.64 & 89.40 & 89.38 \\
+8192128 & 2.01 & 1.99 & 209.06 & 209.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation:} Encapsulation is extremely fast (sub-millisecond for L1), but decapsulation is computationally intensive.
+
+\subsubsection{Size Metrics}
+
+\begin{table}[H]
+\centering
+\caption{Classic McEliece Size Metrics (bytes)}
+\label{tab:mceliece_sizes}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Public Key} & \textbf{Secret Key} & \textbf{Ciphertext} & \textbf{Shared Secret} \\
+\midrule
+348864 & 261,120 & 6,492 & 96 & 32 \\
+460896 & 524,160 & 13,608 & 156 & 32 \\
+8192128 & 1,357,824 & 14,120 & 208 & 32 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Critical Note:} The 8192128 variant has a 1.36 MB public key, which may be prohibitive for constrained environments.
+
+\subsection{HQC}
+
+HQC (Hamming Quasi-Cyclic) is based on the syndrome decoding problem.
+
+\subsubsection{Complete Timing Results}
+
+\begin{table}[H]
+\centering
+\caption{HQC Complete Timing Results (n=200)}
+\label{tab:hqc_timing}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Operation} & \textbf{Mean} & \textbf{Median} & \textbf{Min} & \textbf{Max} \\
+& & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+\multirow{3}{*}{HQC-128} & keygen & 22.10 & 22.06 & 21.99 & 24.83 \\
+& encapsulate & 44.67 & 44.54 & 44.47 & 46.89 \\
+& decapsulate & 73.05 & 73.03 & 72.87 & 73.83 \\
+\midrule
+\multirow{3}{*}{HQC-192} & keygen & 67.45 & 67.36 & 67.26 & 72.68 \\
+& encapsulate & 135.39 & 135.26 & 135.10 & 140.50 \\
+& decapsulate & 211.19 & 211.14 & 210.85 & 213.35 \\
+\midrule
+\multirow{3}{*}{HQC-256} & keygen & 123.59 & 123.54 & 123.40 & 126.32 \\
+& encapsulate & 248.79 & 248.68 & 248.46 & 252.93 \\
+& decapsulate & 392.31 & 392.15 & 391.65 & 401.15 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation:} HQC shows very low variance (tight min-max range), indicating consistent performance.
+
+% ============================================================================
+% VI. SIGNATURE BENCHMARK RESULTS
+% ============================================================================
+\section{Digital Signature Results}
+\label{sec:sig}
+
+\subsection{ML-DSA (NIST FIPS 204)}
+
+ML-DSA (formerly Dilithium) is based on Module Learning With Errors and Module Short Integer Solution problems.
+
+\subsubsection{Complete Timing Results}
+
+\begin{table}[H]
+\centering
+\caption{ML-DSA Complete Timing Results (n=200)}
+\label{tab:mldsa_timing}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Operation} & \textbf{Mean} & \textbf{Median} & \textbf{Min} & \textbf{Max} \\
+& & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+\multirow{3}{*}{ML-DSA-44} & keygen & 0.26 & 0.25 & 0.25 & 0.72 \\
+& sign & 1.03 & 0.85 & 0.42 & 4.11 \\
+& verify & 0.25 & 0.25 & 0.25 & 0.47 \\
+\midrule
+\multirow{3}{*}{ML-DSA-65} & keygen & 0.42 & 0.41 & 0.41 & 0.80 \\
+& sign & 1.59 & 1.29 & 0.61 & 6.89 \\
+& verify & 0.38 & 0.38 & 0.38 & 0.53 \\
+\midrule
+\multirow{3}{*}{ML-DSA-87} & keygen & 0.61 & 0.61 & 0.60 & 0.96 \\
+& sign & 1.77 & 1.48 & 0.92 & 6.17 \\
+& verify & 0.61 & 0.61 & 0.61 & 0.76 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observation:} Signing times show higher variance than keygen/verify due to rejection sampling.
+
+\subsubsection{Size Metrics}
+
+\begin{table}[H]
+\centering
+\caption{ML-DSA Size Metrics (bytes)}
+\label{tab:mldsa_sizes}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Public Key} & \textbf{Secret Key} & \textbf{Signature} \\
+\midrule
+ML-DSA-44 & 1,312 & 2,560 & 2,420 \\
+ML-DSA-65 & 1,952 & 4,032 & 3,309 \\
+ML-DSA-87 & 2,592 & 4,896 & 4,627 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Falcon}
+
+Falcon is based on NTRU lattices with Gaussian sampling.
+
+\subsubsection{Complete Timing Results}
+
+\begin{table}[H]
+\centering
+\caption{Falcon Complete Timing Results (n=200)}
+\label{tab:falcon_timing}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Operation} & \textbf{Mean} & \textbf{Median} & \textbf{Min} & \textbf{Max} \\
+& & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+\multirow{3}{*}{Falcon-512} & keygen & 18.87 & 17.63 & 13.64 & 41.62 \\
+& sign & 0.65 & 0.64 & 0.63 & 1.36 \\
+& verify & 0.11 & 0.11 & 0.11 & 0.31 \\
+\midrule
+\multirow{3}{*}{Falcon-1024} & keygen & 51.01 & 47.29 & 41.60 & 111.87 \\
+& sign & 1.31 & 1.30 & 1.27 & 1.80 \\
+& verify & 0.20 & 0.19 & 0.19 & 0.42 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key Observation:} Falcon has the fastest verification times of all evaluated signature schemes.
+
+\subsubsection{Size Metrics}
+
+\begin{table}[H]
+\centering
+\caption{Falcon Size Metrics (bytes)}
+\label{tab:falcon_sizes}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Public Key} & \textbf{Secret Key} & \textbf{Signature} \\
+\midrule
+Falcon-512 & 897 & 1,281 & 659 \\
+Falcon-1024 & 1,793 & 2,305 & 1,267 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Note:} Falcon produces the smallest signatures among evaluated schemes.
+
+\subsection{SPHINCS+}
+
+SPHINCS+ is a stateless hash-based signature scheme.
+
+\subsubsection{Complete Timing Results}
+
+\begin{table}[H]
+\centering
+\caption{SPHINCS+ Complete Timing Results (n=200)}
+\label{tab:sphincs_timing}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Operation} & \textbf{Mean} & \textbf{Median} & \textbf{Min} & \textbf{Max} \\
+& & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+\multirow{3}{*}{128s} & keygen & 193.26 & 193.11 & 192.90 & 197.68 \\
+& sign & 1460.87 & 1460.29 & 1459.37 & 1470.58 \\
+& verify & 1.49 & 1.49 & 1.48 & 1.65 \\
+\midrule
+\multirow{3}{*}{192s} & keygen & 280.88 & 280.55 & 280.26 & 287.36 \\
+& sign & 2611.10 & 2598.47 & 2596.17 & 4807.13 \\
+& verify & 2.20 & 2.19 & 2.18 & 2.38 \\
+\midrule
+\multirow{3}{*}{256s} & keygen & 186.05 & 186.00 & 185.67 & 187.63 \\
+& sign & 2308.36 & 2307.46 & 2305.92 & 2325.33 \\
+& verify & 3.12 & 3.09 & 3.08 & 3.51 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Critical Observation:} SPHINCS+ signing is extremely slow (1.5-2.6 seconds), making it unsuitable for latency-sensitive applications. However, verification is fast.
+
+\subsubsection{Size Metrics}
+
+\begin{table}[H]
+\centering
+\caption{SPHINCS+ Size Metrics (bytes)}
+\label{tab:sphincs_sizes}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{Variant} & \textbf{Public Key} & \textbf{Secret Key} & \textbf{Signature} \\
+\midrule
+128s & 32 & 64 & 7,856 \\
+192s & 48 & 96 & 16,224 \\
+256s & 64 & 128 & 29,792 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Note:} SPHINCS+ has the smallest keys but largest signatures.
+
+% ============================================================================
+% VII. COMPARATIVE ANALYSIS
+% ============================================================================
+\section{Comparative Analysis}
+\label{sec:comparison}
+
+\subsection{NIST Level Comparison}
+
+\subsubsection{KEM Operations by NIST Level}
+
+\begin{table}[H]
+\centering
+\caption{KEM Mean Timing by NIST Security Level (ms)}
+\label{tab:kem_nist}
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+\textbf{Level} & \textbf{Metric} & \textbf{ML-KEM} & \textbf{McEliece} & \textbf{HQC} \\
+\midrule
+\multirow{3}{*}{L1} & keygen & 0.116 & 333.39 & 22.10 \\
+& encaps & 0.066 & 0.27 & 44.67 \\
+& decaps & 0.071 & 55.45 & 73.05 \\
+\midrule
+\multirow{3}{*}{L3} & keygen & 0.111 & 1114.67 & 67.45 \\
+& encaps & 0.089 & 0.66 & 135.39 \\
+& decaps & 0.097 & 89.40 & 211.19 \\
+\midrule
+\multirow{3}{*}{L5} & keygen & 0.142 & 8834.74 & 123.59 \\
+& encaps & 0.121 & 2.01 & 248.79 \\
+& decaps & 0.144 & 209.06 & 392.31 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Signature Operations by NIST Level}
+
+\begin{table}[H]
+\centering
+\caption{Signature Mean Timing by NIST Security Level (ms)}
+\label{tab:sig_nist}
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+\textbf{Level} & \textbf{Metric} & \textbf{ML-DSA} & \textbf{Falcon} & \textbf{SPHINCS+} \\
+\midrule
+\multirow{3}{*}{L1} & keygen & 0.26 & 18.87 & 193.26 \\
+& sign & 1.03 & 0.65 & 1460.87 \\
+& verify & 0.25 & 0.11 & 1.49 \\
+\midrule
+\multirow{3}{*}{L3} & keygen & 0.42 & -- & 280.88 \\
+& sign & 1.59 & -- & 2611.10 \\
+& verify & 0.38 & -- & 2.20 \\
+\midrule
+\multirow{3}{*}{L5} & keygen & 0.61 & 51.01 & 186.05 \\
+& sign & 1.77 & 1.31 & 2308.36 \\
+& verify & 0.61 & 0.20 & 3.12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Cross-Family Performance Ranking}
+
+\subsubsection{KEM Ranking (Lower is Better)}
+
+\begin{enumerate}[noitemsep]
+    \item \textbf{Fastest KeyGen}: ML-KEM (all variants $<$ 0.15 ms)
+    \item \textbf{Fastest Encapsulation}: ML-KEM-512 (0.066 ms)
+    \item \textbf{Fastest Decapsulation}: ML-KEM-512 (0.071 ms)
+    \item \textbf{Smallest Public Key}: ML-KEM-512 (800 bytes)
+    \item \textbf{Smallest Ciphertext}: Classic McEliece-348864 (96 bytes)
+\end{enumerate}
+
+\subsubsection{Signature Ranking (Lower is Better)}
+
+\begin{enumerate}[noitemsep]
+    \item \textbf{Fastest KeyGen}: ML-DSA-44 (0.26 ms)
+    \item \textbf{Fastest Signing}: Falcon-512 (0.65 ms)
+    \item \textbf{Fastest Verification}: Falcon-512 (0.11 ms)
+    \item \textbf{Smallest Public Key}: SPHINCS+-128s (32 bytes)
+    \item \textbf{Smallest Signature}: Falcon-512 (659 bytes)
+\end{enumerate}
+
+% ============================================================================
+% VIII. ANOMALY ANALYSIS
+% ============================================================================
+\section{Anomaly Detection and Outlier Analysis}
+\label{sec:anomaly}
+
+\subsection{Identified Anomalies}
+
+\subsubsection{Classic McEliece Key Generation}
+\begin{itemize}[noitemsep]
+    \item \textbf{Anomaly Type}: Extreme variance
+    \item \textbf{Magnitude}: Max/Min ratio up to 14.8$\times$ for 8192128
+    \item \textbf{Cause}: Probabilistic Goppa code generation with variable rejection rates
+    \item \textbf{Impact}: Unpredictable key generation time for real-time applications
+\end{itemize}
+
+\subsubsection{ML-KEM-512 Key Generation}
+\begin{itemize}[noitemsep]
+    \item \textbf{Anomaly Type}: Occasional spikes
+    \item \textbf{Magnitude}: Max (6.435 ms) vs Median (0.082 ms) = 78$\times$
+    \item \textbf{Cause}: System interference (cache effects, scheduling)
+    \item \textbf{Impact}: Rare but significant outliers
+\end{itemize}
+
+\subsubsection{SPHINCS+-192s Signing}
+\begin{itemize}[noitemsep]
+    \item \textbf{Anomaly Type}: Bimodal distribution suspected
+    \item \textbf{Magnitude}: Max (4807 ms) vs Median (2598 ms) = 1.85$\times$
+    \item \textbf{Cause}: Potentially different code paths for different message characteristics
+\end{itemize}
+
+\subsection{Variance Analysis}
+
+\begin{table}[H]
+\centering
+\caption{Coefficient of Variation (CV = $\sigma/\mu$) for Key Operations}
+\label{tab:cv}
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Algorithm} & \textbf{Operation} & \textbf{CV (\%)} \\
+\midrule
+Classic McEliece-8192128 & keygen & 78.3\% \\
+Classic McEliece-460896 & keygen & 69.5\% \\
+Classic McEliece-348864 & keygen & 66.6\% \\
+ML-KEM-512 & keygen & 387.0\% \\
+Falcon-1024 & keygen & 25.3\% \\
+\midrule
+HQC-128 & keygen & 0.97\% \\
+HQC-256 & decaps & 0.22\% \\
+SPHINCS+-256s & keygen & 0.24\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Interpretation}: High CV indicates unpredictable performance. Low CV ($<$5\%) indicates highly consistent timing.
+
+% ============================================================================
+% IX. SIZE-TIMING TRADE-OFFS
+% ============================================================================
+\section{Size-Timing Trade-off Analysis}
+\label{sec:tradeoff}
+
+\subsection{KEM Trade-offs}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.48\textwidth]{plots_comprehensive/tradeoff_kem_keygen_pubkey.png}
+\caption{KEM Public Key Size vs Key Generation Time. Larger markers indicate higher NIST security levels.}
+\label{fig:tradeoff_kem}
+\end{figure}
+
+\textbf{Key Insights:}
+\begin{itemize}[noitemsep]
+    \item ML-KEM offers the best trade-off: small keys, fast operations
+    \item Classic McEliece has extreme public key sizes but fast encapsulation
+    \item HQC provides a middle ground with moderate sizes and times
+\end{itemize}
+
+\subsection{Signature Trade-offs}
+
+\textbf{Key Insights:}
+\begin{itemize}[noitemsep]
+    \item Falcon provides the best overall trade-off for signature schemes
+    \item SPHINCS+ has tiny keys but very large signatures and slow signing
+    \item ML-DSA offers balanced performance across all metrics
+\end{itemize}
+
+% ============================================================================
+% X. CIPHER SUITE RESULTS
+% ============================================================================
+\section{Cipher Suite Handshake Results}
+\label{sec:suites}
+
+\subsection{Full Handshake Timing}
+
+The cipher suite combines KEM, signature, and AEAD for a complete cryptographic handshake.
+
+\subsubsection{NIST Level 1 Suites}
+
+\begin{table}[H]
+\centering
+\caption{L1 Suite Full Handshake (n=200)}
+\label{tab:suite_l1}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Suite Configuration} & \textbf{Mean} & \textbf{Median} & \textbf{Min} & \textbf{Max} \\
+& (ms) & (ms) & (ms) & (ms) \\
+\midrule
+McE348864 + AES + Falcon512 & 402.18 & 358.16 & 213.59 & 1369.79 \\
+McE348864 + AES + ML-DSA44 & 396.70 & 287.50 & 213.41 & 1441.80 \\
+McE348864 + AES + SPHINCS128s & 1839.14 & 1754.72 & 1675.81 & 2398.43 \\
+McE348864 + ChaCha + Falcon512 & 364.35 & 287.16 & 213.50 & 1156.17 \\
+McE348864 + Ascon + ML-DSA44 & 373.72 & 288.72 & 213.39 & 1732.16 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{NIST Level 5 Suites}
+
+\begin{table}[H]
+\centering
+\caption{L5 Suite Full Handshake (n=200)}
+\label{tab:suite_l5}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Suite Configuration} & \textbf{Mean} & \textbf{Median} & \textbf{Min} & \textbf{Max} \\
+& (ms) & (ms) & (ms) & (ms) \\
+\midrule
+McE8192128 + AES + Falcon1024 & 9283.75 & 7591.18 & 2580.85 & 38487.10 \\
+McE8192128 + AES + ML-DSA87 & 8897.82 & 7645.65 & 2746.67 & 36728.97 \\
+McE8192128 + AES + SPHINCS256s & 12377.19 & 9948.37 & 5093.30 & 63136.68 \\
+McE8192128 + Ascon + Falcon1024 & 8446.91 & 5437.86 & 2550.29 & 34295.25 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Critical Note:} Level 5 suites with Classic McEliece can take over 60 seconds in worst case due to key generation variance.
+
+% ============================================================================
+% XI. VISUAL SUMMARY
+% ============================================================================
+\section{Visual Summary}
+\label{sec:visual}
+
+\subsection{Spider Charts - Multi-Metric Comparison}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.48\textwidth]{plots_comprehensive/spider_kem_all.png}
+\caption{KEM algorithms: Normalized comparison of all timing and size metrics. Values closer to center indicate better performance.}
+\label{fig:spider_kem}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.48\textwidth]{plots_comprehensive/spider_sig_all.png}
+\caption{Signature algorithms: Normalized comparison of all timing and size metrics.}
+\label{fig:spider_sig}
+\end{figure}
+
+\subsection{Heatmap Comparisons}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.48\textwidth]{plots_comprehensive/heatmap_kem.png}
+\caption{KEM performance heatmap. Yellow indicates worse performance, dark red indicates better.}
+\label{fig:heatmap_kem}
+\end{figure}
+
+\subsection{Comprehensive Overview}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.48\textwidth]{plots_comprehensive/comprehensive_all_metrics.png}
+\caption{Complete comparison of all PQC algorithms across all metrics, grouped by NIST security level.}
+\label{fig:comprehensive}
+\end{figure}
+
+% ============================================================================
+% XII. CONCLUSIONS
+% ============================================================================
+\section{Data Summary}
+\label{sec:conclusions}
+
+This section presents factual summaries without interpretive recommendations.
+
+\subsection{Measurement Summary}
+
+\begin{itemize}[noitemsep]
+    \item Total benchmark files: 98
+    \item Total timing measurements: 19,600
+    \item Success rate: 100\%
+    \item Platform: Raspberry Pi 4 (ARM Cortex-A72 @ 1.8 GHz)
+\end{itemize}
+
+\subsection{Performance Ranges Observed}
+
+\begin{table}[H]
+\centering
+\caption{Performance Ranges Across All Algorithms}
+\label{tab:ranges}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Metric} & \textbf{Minimum} & \textbf{Maximum} \\
+\midrule
+KEM KeyGen & 0.082 ms (ML-KEM-512) & 8834 ms (McE-8192128) \\
+KEM Encaps & 0.066 ms (ML-KEM-512) & 248.79 ms (HQC-256) \\
+KEM Decaps & 0.071 ms (ML-KEM-512) & 392.31 ms (HQC-256) \\
+\midrule
+Sig KeyGen & 0.26 ms (ML-DSA-44) & 280.88 ms (SPHINCS+-192s) \\
+Sig Sign & 0.65 ms (Falcon-512) & 2611 ms (SPHINCS+-192s) \\
+Sig Verify & 0.11 ms (Falcon-512) & 3.12 ms (SPHINCS+-256s) \\
+\midrule
+Public Key & 32 B (SPHINCS+) & 1.36 MB (McE-8192128) \\
+Signature & 659 B (Falcon-512) & 29,792 B (SPHINCS+-256s) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================================
+% REFERENCES
+% ============================================================================
+\section*{Data Sources}
+
+All data in this report is derived from:
+\begin{enumerate}[noitemsep]
+    \item \texttt{bench\_results/environment.json}
+    \item \texttt{bench\_results/raw/kem/*.json} (27 files)
+    \item \texttt{bench\_results/raw/sig/*.json} (24 files)
+    \item \texttt{bench\_results/raw/aead/*.json} (24 files)
+    \item \texttt{bench\_results/raw/suites/*.json} (23 files)
+\end{enumerate}
+
+\vspace{1em}
+\textit{Report generated: January 2026}\\
+\textit{No metrics were invented. All values computed from raw benchmark data.}
+
+\end{document}

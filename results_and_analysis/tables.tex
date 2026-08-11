@@ -1,0 +1,262 @@
+% ============================================================================
+%  Results & Analysis — Tables Only
+%  Source-verified from: power_aead_benchmark.csv, benchmark_full_table_20260220.csv,
+%  bench_ddos_results/20260302_135859/comparison.json, sscheduler/policy.py,
+%  aead_benchmark_rpi_cenv.csv, vtc/results_analysis_tables_only.tex
+%
+%  Formatting follows OQS liboqs profiling + NIST PQC standardisation reports:
+%    - booktabs, no vertical rules
+%    - NIST security level column
+%    - units in column header, not in cells
+%    - footnote-size, table* for double-column
+%
+%  Compile: pdflatex tables.tex  (standalone) or \input from main paper
+% ============================================================================
+\documentclass[10pt,twocolumn]{article}
+\usepackage[margin=2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{siunitx}
+\usepackage{caption}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{longtable}
+
+\sisetup{group-separator={,}, detect-weight}
+\DeclareSIUnit\microsecond{\micro\second}
+\DeclareSIUnit\milliwatt{mW}
+\DeclareSIUnit\microjoule{\micro J}
+
+\newcommand{\algo}[1]{\textsc{#1}}
+
+\begin{document}
+
+\onecolumn   % tables are wide — force single column
+
+% ====================================================================
+%  TABLE 1 — KEM Primitives
+% ====================================================================
+\begin{table*}[!ht]
+\centering
+\caption{Post-quantum KEM primitive performance on Raspberry Pi~4 (Cortex-A72 @ 1.8\,GHz, 200 iterations).
+$\Delta P = P_\text{mean} - P_\text{idle}$ with $P_\text{idle} = 3309$\,mW.
+Sizes: public key (PK) and ciphertext (CT).}
+\label{tab:kem-primitives}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}llS[table-format=4.3]S[table-format=3.3]S[table-format=3.3]S[table-format=4.1]S[table-format=3.1]S[table-format=3.1]rr@{}}
+\toprule
+{Algorithm} & {NIST} & {KeyGen (ms)} & {Encap (ms)} & {Decap (ms)} & {KeyGen $\Delta P$ (mW)} & {Encap $\Delta P$ (mW)} & {Decap $\Delta P$ (mW)} & {PK (B)} & {CT (B)} \\
+\midrule
+ML-KEM-512            & L1 &    0.191 &   0.148 &   0.153 &  125.9 & 153.9 & 172.7 &      800 &    768 \\
+HQC-128               & L1 &   22.152 &  44.625 &  73.131 &  412.6 & 441.6 & 566.8 &    2249 &   4433 \\
+Classic McEliece 348864 & L1 &  297.526 &   0.460 &  55.604 &  966.2 & 156.2 & 410.7 &  261120 &     96 \\
+\midrule
+ML-KEM-768            & L3 &    0.223 &   0.175 &   0.181 &  149.4 & 185.9 & 205.7 &    1184 &   1088 \\
+HQC-192               & L3 &   67.430 & 135.390 & 211.278 &  501.2 & 650.9 & 731.5 &    4522 &   8978 \\
+Classic McEliece 460896 & L3 &  972.453 &   0.857 &  89.434 & 1075.7 & 279.6 & 485.1 &  524160 &    156 \\
+\midrule
+ML-KEM-1024           & L5 &    0.269 &   0.212 &   0.225 &  154.4 & 180.7 & 177.5 &    1568 &   1568 \\
+HQC-256               & L5 &  123.836 & 250.537 & 392.216 &  646.9 & 782.9 & 819.0 &    7245 &  14421 \\
+Classic McEliece 8192128 & L5 & 6901.609 &   1.856 & 209.313 & 1092.6 & 301.2 & 639.1 & 1357824 &    208 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% ====================================================================
+%  TABLE 2 — Digital Signature Primitives
+% ====================================================================
+\begin{table*}[!ht]
+\centering
+\caption{Post-quantum digital signature performance on Raspberry Pi~4 (Cortex-A72 @ 1.8\,GHz, 200 iterations).
+$\Delta P = P_\text{mean} - P_\text{idle}$ with $P_\text{idle} = 3309$\,mW.}
+\label{tab:sig-primitives}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}llS[table-format=3.3]S[table-format=4.3]S[table-format=1.3]S[table-format=3.1]S[table-format=3.1]S[table-format=3.1]S[table-format=5.0]@{}}
+\toprule
+{Algorithm} & {NIST} & {KeyGen (ms)} & {Sign (ms)} & {Verify (ms)} & {KeyGen $\Delta P$ (mW)} & {Sign $\Delta P$ (mW)} & {Verify $\Delta P$ (mW)} & {Sig (B)} \\
+\midrule
+Falcon-512           & L1 &  17.722 &    0.773 & 0.188 & 326.9 & 255.4 & 238.8 &   654 \\
+ML-DSA-44            & L1 &   0.368 &    0.975 & 0.324 & 245.8 & 279.5 & 235.8 &  2420 \\
+SPHINCS$^+$-128s     & L1 & 193.609 & 1466.336 & 1.589 & 729.7 & 783.7 & 285.7 &  7856 \\
+\midrule
+ML-DSA-65            & L3 &   0.551 &    1.212 & 0.476 & 240.9 & 268.9 & 240.2 &  3309 \\
+SPHINCS$^+$-192s     & L3 & 282.538 & 2610.427 & 2.275 & 797.1 & 763.8 & 303.3 & 16224 \\
+\midrule
+Falcon-1024          & L5 &  49.016 &    1.441 & 0.275 & 439.3 & 250.4 & 240.0 &  1267 \\
+ML-DSA-87            & L5 &   0.739 &    1.626 & 0.718 & 227.0 & 268.1 & 235.2 &  4627 \\
+SPHINCS$^+$-256s     & L5 & 186.472 & 2323.760 & 3.277 & 715.1 & 790.5 & 255.0 & 29792 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% ====================================================================
+%  TABLE 3 — AEAD on MAVLink Packet Sizes (Power + Latency)
+% ====================================================================
+\begin{table*}[!ht]
+\centering
+\caption{AEAD cipher performance on MAVLink packet sizes.
+Raspberry Pi~4, 10\,000 iterations, two-pass methodology (Pass~1: timing with \texttt{gc.disable()};
+Pass~2: INA219 power at 100\,Hz).
+Idle baseline: $P_\text{idle} = 2.961$\,W.
+RT $\mu$J = encrypt + decrypt energy per round-trip operation.}
+\label{tab:aead-mavlink}
+\footnotesize
+\setlength{\tabcolsep}{2.4pt}
+\begin{tabular}{@{}llS[table-format=2.2]S[table-format=2.2]S[table-format=2.2]S[table-format=2.2]S[table-format=1.3]S[table-format=1.3]S[table-format=2.2]S[table-format=2.2]S[table-format=3.2]@{}}
+\toprule
+{Cipher} & {Payload (B)} & {Enc ($\mu$s)} & {Dec ($\mu$s)} & {Enc (MB/s)} & {Dec (MB/s)} & {Enc $P$ (W)} & {Dec $P$ (W)} & {Enc ($\mu$J/op)} & {Dec ($\mu$J/op)} & {RT ($\mu$J)} \\
+\midrule
+\multirow{6}{*}{AES-256-GCM}
+ & 9   &  4.81 &  4.46 &  1.87 &  2.02 & 3.033 & 3.025 & 17.51 & 12.85 &  30.36 \\
+ & 28  &  5.13 &  4.89 &  5.45 &  5.72 & 2.958 & 3.325 & 18.14 & 17.49 &  35.63 \\
+ & 33  &  5.51 &  5.17 &  5.99 &  6.39 & 3.328 & 3.232 & 21.30 & 16.28 &  37.58 \\
+ & 42  &  5.53 &  5.22 &  7.59 &  8.04 & 2.986 & 2.997 & 19.29 & 15.15 &  34.44 \\
+ & 54  &  5.79 &  5.51 &  9.33 &  9.81 & 3.017 & 3.178 & 20.38 & 17.38 &  37.76 \\
+ & 263 &  9.80 &  9.59 & 26.83 & 27.41 & 3.078 & 2.983 & 32.81 & 28.65 &  61.45 \\
+\midrule
+\multirow{6}{*}{ChaCha20-Poly1305}
+ & 9   &  5.17 &  4.99 &  1.74 &  1.80 & 3.036 & 2.992 & 18.27 & 13.63 &  31.91 \\
+ & 28  &  5.26 &  4.95 &  5.32 &  5.66 & 3.026 & 3.009 & 17.98 & 14.16 &  32.14 \\
+ & 33  &  5.23 &  5.13 &  6.31 &  6.44 & 3.031 & 3.056 & 18.34 & 14.21 &  32.55 \\
+ & 42  &  5.19 &  5.00 &  8.10 &  8.40 & 3.049 & 3.249 & 19.04 & 15.42 &  34.46 \\
+ & 54  &  5.25 &  5.05 & 10.29 & 10.70 & 3.300 & 2.993 & 19.99 & 14.17 &  34.16 \\
+ & 263 &  6.54 &  6.49 & 40.24 & 40.53 & 3.037 & 3.036 & 22.35 & 18.60 &  40.95 \\
+\midrule
+\multirow{6}{*}{Ascon-128a}
+ & 9   & 11.36 & 11.16 &  0.79 &  0.81 & 2.970 & 3.040 & 49.13 & 42.41 &  91.53 \\
+ & 28  & 11.47 & 11.43 &  2.44 &  2.45 & 3.388 & 3.034 & 46.08 & 43.62 &  89.69 \\
+ & 33  & 11.58 & 11.69 &  2.85 &  2.82 & 3.004 & 2.900 & 49.63 & 42.75 &  92.38 \\
+ & 42  & 11.55 & 11.59 &  3.64 &  3.62 & 2.996 & 3.108 & 50.04 & 44.73 &  94.77 \\
+ & 54  & 11.69 & 11.79 &  4.62 &  4.58 & 3.363 & 3.041 & 55.62 & 44.44 & 100.06 \\
+ & 263 & 12.87 & 13.42 & 20.43 & 19.59 & 3.018 & 3.132 & 54.28 & 50.26 & 104.54 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% ====================================================================
+%  TABLE 4 — PQC Effect on DDoS Detection Cost
+% ====================================================================
+\begin{table*}[!ht]
+\centering
+\caption{Effect of PQC security level on DDoS detector overhead.
+72 cipher suites (24 KEM$\times$SIG pairs $\times$ 3 AEADs), aggregated per NIST level from
+\texttt{comparison.json} (run 2026-03-02).
+D-NO = no detector; D-XGB = XGBoost; D-TST = Transformer.}
+\label{tab:pqc-effect-on-ddos}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lS[table-format=2.2]S[table-format=2.2]S[table-format=2.2]S[table-format=2.2]S[table-format=2.2]S[table-format=4.0]S[table-format=4.0]S[table-format=4.0]S[table-format=4.0]S[table-format=4.0]@{}}
+\toprule
+{NIST} & \multicolumn{3}{c}{CPU (\%)} & \multicolumn{2}{c}{$\Delta$CPU (pp)} & \multicolumn{3}{c}{Power (mW)} & \multicolumn{2}{c}{$\Delta$Power (mW)} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-6} \cmidrule(lr){7-9} \cmidrule(lr){10-11}
+ & {D-NO} & {D-XGB} & {D-TST} & {+XGB} & {+TST} & {D-NO} & {D-XGB} & {D-TST} & {+XGB} & {+TST} \\
+\midrule
+L1 (27 suites) & 21.02 & 46.21 & 89.39 & 25.19 & 68.37 & 3079 & 4004 & 4108 & 925 & 1029 \\
+L3 (18 suites) & 22.87 & 48.10 & 89.64 & 25.24 & 66.77 & 3039 & 3996 & 3984 & 958 & 945 \\
+L5 (27 suites) & 22.71 & 48.16 & 89.29 & 25.45 & 66.58 & 3084 & 4019 & 4114 & 936 & 1030 \\
+\midrule
+\multicolumn{3}{@{}l}{\textit{All 72 suites}} & 89.44 & 25.29 & 67.24 & 3067 & 4006 & 4069 & 940 & 1001 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% ====================================================================
+%  TABLE 5 — DDoS Effect on PQC Handshake Latency
+% ====================================================================
+\begin{table*}[!ht]
+\centering
+\caption{Effect of DDoS detection on PQC handshake latency.
+Mean handshake time (drone-side) per NIST level, averaged across all valid suites.
+$\Delta$ = detector overhead relative to no-detector baseline.
+Throughput = completed handshakes per second.}
+\label{tab:ddos-effect-on-pqc}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lS[table-format=4.2]S[table-format=4.2]S[table-format=4.2]S[table-format=5.2]S[table-format=5.2]S[table-format=2.3]S[table-format=2.3]S[table-format=1.3]@{}}
+\toprule
+{NIST} & \multicolumn{3}{c}{Mean Handshake (ms)} & \multicolumn{2}{c}{$\Delta$ Latency (ms)} & \multicolumn{3}{c}{Throughput (HS/s)} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-6} \cmidrule(lr){7-9}
+ & {D-NO} & {D-XGB} & {D-TST} & {$\Delta_\text{XGB}$} & {$\Delta_\text{TST}$} & {D-NO} & {D-XGB} & {D-TST} \\
+\midrule
+L1 (27 suites) &  699.37 &  688.86 &  901.32  & -10.51  & +201.95  & 22.043 & 21.464 & 8.227 \\
+L3 (18 suites) & 1939.10 & 1852.59 & 2791.27  & -86.51  & +852.17  & 13.406 & 13.274 & 5.721 \\
+L5 (27 suites) & 6582.57 & 4577.05 & 6527.46  & -2005.52 & -55.11  & 17.356 & 17.191 & 6.356 \\
+\midrule
+\textit{All 72} & 3215.50 & 2437.90 & 3483.60  & -777.60 & +268.10  & {---}  & {---}  & {---} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% ====================================================================
+%  TABLE 6 — Scheduler Safety Thresholds & Detector Constraints
+% ====================================================================
+\begin{table*}[!ht]
+\centering
+\caption{MDEAS scheduler constants and cross-axis constraints.
+All values extracted from \texttt{sscheduler/policy.py} named constants.}
+\label{tab:scheduler-thresholds}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{3.2cm}p{13.8cm}@{}}
+\toprule
+{Category} & {Code-defined value} \\
+\midrule
+Battery thresholds
+  & warn $= 15200$\,mV \quad low $= 14800$\,mV \quad critical $= 14000$\,mV \quad drain-rate warn $= 500$\,mV/min \\
+Thermal thresholds
+  & warn $= 70.0\,^{\circ}$C \quad critical $= 80.0\,^{\circ}$C \quad rising-rate warn $= 5.0\,^{\circ}$C/min \\
+Link-quality gates
+  & min PPS $= 5.0$ \quad max gap $= 1000$\,ms \quad max blackout count $= 3$ \\
+Hysteresis timing
+  & downgrade hold $= 5.0$\,s \quad upgrade cooldown $= 30$\,s (disarmed) / $90$\,s (armed) \quad AEAD recovery $= 10$\,s \\
+\midrule
+Detector overhead (NONE)
+  & $\Delta P = 0.00$\,W \quad $\Delta T = 0.0\,^{\circ}$C \quad $\Delta$CPU $= 0$\,pp \quad warmup $= 0.0$\,s \quad max baseline temp $= 80.0\,^{\circ}$C \\
+Detector overhead (XGBoost)
+  & $\Delta P = 0.95$\,W \quad $\Delta T = 4.8\,^{\circ}$C \quad $\Delta$CPU $= 35$\,pp \quad warmup $= 10.0$\,s \quad max baseline temp $= 75.0\,^{\circ}$C \\
+Detector overhead (TST)
+  & $\Delta P = 1.97$\,W \quad $\Delta T = 10.7\,^{\circ}$C \quad $\Delta$CPU $= 91$\,pp \quad warmup $= 5.0$\,s \quad max baseline temp $= 69.0\,^{\circ}$C \\
+\midrule
+Forbidden AEAD+Detector
+  & \{Ascon-128a\} with TST detector \\
+Discouraged KEM+Detector
+  & \{Classic McEliece 348864, 460896, 8192128\} with TST detector \\
+Forbidden KEM+SIG pairs
+  & All 9 Classic McEliece $\times$ SPHINCS$^+$ combinations (handshake $> 2$\,s at baseline) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% ====================================================================
+%  TABLE 7 — Graceful Degradation Decision Boundaries
+% ====================================================================
+\begin{table*}[!ht]
+\centering
+\caption{MDEAS graceful degradation decision boundaries.
+Each trigger initiates a specific axis action to reduce resource consumption while maintaining
+an encrypted link. Recovery proceeds in reverse with hysteresis ($30$/$90$\,s) to prevent oscillation.
+Values from \texttt{sscheduler/policy.py}.}
+\label{tab:graceful-degradation}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}llllr@{}}
+\toprule
+{Trigger Condition} & {Axis} & {Action} & {Expected Saving} & {Tier} \\
+\midrule
+$T > 80\,^{\circ}$C (critical)       & AEAD, DDoS & Shed TST; Ascon$\to$ChaCha20          & $-2.0$\,W        & 3 \\
+$T > 75\,^{\circ}$C                   & DDoS       & XGBoost $\to$ $\varnothing$ (no detector) & $-0.95$\,W       & 2 \\
+$T > 72\,^{\circ}$C (rising)          & AEAD       & Preemptive AEAD downgrade              & $-0.05$\,W       & 1 \\
+CPU $> 85$\%                           & DDoS       & TST $\to$ XGBoost                       & $-56$\,pp CPU    & 2 \\
+Battery $\leq 14800$\,mV              & Level      & L5 $\to$ L3 $\to$ L1                    & $-7$\,mJ/rekey   & 2 \\
+Battery $\leq 14000$\,mV (critical)   & All        & Minimum config (L1 + cheapest AEAD)    & Flight-hold     & 3 \\
+DDoS alert raised                      & DDoS       & $\varnothing$ $\to$ XGBoost             & $+951$\,mW       & 0 \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{Degradation tiers: 0 = Full (L5+AES-GCM+TST), 1 = Lighter AEAD, 2 = Lower level/detector, 3 = Minimum viable.}} \\
+\multicolumn{5}{@{}l}{\textit{Floor invariant: encrypted MAVLink link is \textbf{never} dropped to plaintext.}} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\end{document}

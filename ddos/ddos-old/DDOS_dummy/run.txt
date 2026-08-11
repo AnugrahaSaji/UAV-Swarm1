@@ -1,0 +1,8 @@
+source hack/bin/activate
+sudo python3 ddos_pipeline.py 8500
+
+
+Incase of rerun delete input.db, output.db
+
+fetch data:
+python3 temp.py

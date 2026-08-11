@@ -1,0 +1,3446 @@
+\documentclass[11pt,a4paper,twoside]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{geometry}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{longtable}
+\usepackage{multicol}
+\usepackage{titlesec}
+
+\geometry{margin=2cm, inner=2.5cm, outer=2cm}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[RE]{PQC Benchmark Report}
+\fancyhead[LO]{\leftmark}
+\fancyfoot[C]{\footnotesize IEEE-Style Comprehensive Analysis}
+
+\titleformat{\section}{\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{1em}{}
+
+\title{\textbf{Comprehensive Post-Quantum Cryptography\\Cipher Suite Benchmark Report}\\[0.5em]
+\large IEEE-Style Analysis of 72 PQC Suites\\on Raspberry Pi 4 UAV Platform}
+
+\author{Automated Benchmark Framework v2.0}
+\date{January 12, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This comprehensive report presents detailed benchmark results for 72 post-quantum 
+cryptographic (PQC) cipher suites evaluated on a Raspberry Pi 4 Model B representing a UAV endpoint 
+communicating with a Windows-based Ground Control Station (GCS). The analysis covers three AEAD 
+algorithms (AES-256-GCM, ChaCha20-Poly1305, ASCON-128a), three NIST security levels (L1, L3, L5), 
+and provides individual performance profiles for each suite. Results demonstrate handshake times 
+ranging from 10.7\,ms to 2517.5\,ms with 
+recommendations for UAV-optimized configurations.
+\end{abstract}
+
+\tableofcontents
+\listoffigures
+\listoftables
+\newpage
+
+%==============================================================================
+\section{Executive Summary}
+%==============================================================================
+
+\subsection{Benchmark Overview}
+
+\begin{table}[H]
+\centering
+\caption{Benchmark Campaign Summary}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Total Suites Tested & 72 \\
+Successful & 71 \\
+Failed & 1 \\
+Run ID & \texttt{20260112\_035444} \\
+Duration per Suite & 10.0 seconds \\
+\midrule
+Fastest Handshake & 10.65 ms \\
+Slowest Handshake & 2517.53 ms \\
+Average Handshake & 708.54 ms \\
+Median Handshake & 287.49 ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Key Findings}
+
+\begin{enumerate}
+    \item \textbf{ML-KEM dominates performance:} All ML-KEM variants achieve sub-30ms handshakes
+    \item \textbf{SPHINCS+ introduces significant overhead:} Hash-based signatures add 800-2500ms
+    \item \textbf{AEAD choice has minimal impact:} Less than 5\% variance between AES-GCM, ChaCha20, and ASCON
+    \item \textbf{Security level correlation:} Higher levels (L3, L5) show 10-20\% increased latency vs L1
+    \item \textbf{Classic McEliece has extreme key sizes:} Up to 1.3MB public keys impact bandwidth
+\end{enumerate}
+
+\subsection{Recommendations}
+
+\begin{table}[H]
+\centering
+\caption{Recommended Configurations by Use Case}
+\begin{tabular}{l l l l}
+\toprule
+\textbf{Use Case} & \textbf{KEM} & \textbf{Signature} & \textbf{Expected Time} \\
+\midrule
+Real-time Control & ML-KEM-512 & Falcon-512 & 10-15 ms \\
+Balanced Security & ML-KEM-768 & ML-DSA-65 & 15-20 ms \\
+Maximum Security & ML-KEM-1024 & ML-DSA-87 & 15-25 ms \\
+Bandwidth-Critical & ML-KEM-512 & Falcon-512 & 2.2 KB artifacts \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==============================================================================
+\section{AEAD Algorithm Analysis}
+%==============================================================================
+
+This section compares cipher suite performance segmented by AEAD algorithm.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/aead_radar.pdf}
+    \caption{AEAD Algorithm Comparison (Radar Chart)}
+    \label{fig:aead-radar}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/aead_violin.pdf}
+    \caption{Handshake Time Distribution by AEAD (Violin Plot)}
+    \label{fig:aead-violin}
+\end{figure}
+
+
+\subsection{AES-256-GCM Analysis}
+\label{sec:aead-aes256gcm}
+
+This section analyzes all 23 cipher suites using \textbf{AES-256-GCM} as the AEAD algorithm.
+
+\subsubsection{Statistical Summary}
+
+\begin{table}[H]
+\centering
+\caption{AES-256-GCM Suite Performance Statistics}
+\begin{tabular}{l r r r r r}
+\toprule
+\textbf{Metric} & \textbf{Min} & \textbf{Mean} & \textbf{Median} & \textbf{Max} & \textbf{Std Dev} \\
+\midrule
+Handshake (ms) & 14.6 & 614.4 & 292.8 & 1776.6 & 608.4 \\
+Artifact Size (KB) & 2.2 & 241.8 & 22.4 & 1355.3 & 452.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Suites Ranked by Performance}
+
+\begin{table}[H]
+\centering
+\caption{Top 5 Fastest AES-256-GCM Suites}
+\begin{tabular}{r l l l r}
+\toprule
+\textbf{Rank} & \textbf{KEM} & \textbf{Signature} & \textbf{Level} & \textbf{Time (ms)} \\
+\midrule
+1 & ML-KEM-512 & Falcon-512 & L1 & 14.6 \\
+2 & ML-KEM-1024 & ML-DSA-87 & L5 & 14.6 \\
+3 & ML-KEM-512 & ML-DSA-44 & L1 & 19.0 \\
+4 & ML-KEM-768 & ML-DSA-65 & L3 & 19.5 \\
+5 & ML-KEM-1024 & Falcon-1024 & L5 & 21.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{ChaCha20-Poly1305 Analysis}
+\label{sec:aead-chacha20poly1305}
+
+This section analyzes all 24 cipher suites using \textbf{ChaCha20-Poly1305} as the AEAD algorithm.
+
+\subsubsection{Statistical Summary}
+
+\begin{table}[H]
+\centering
+\caption{ChaCha20-Poly1305 Suite Performance Statistics}
+\begin{tabular}{l r r r r r}
+\toprule
+\textbf{Metric} & \textbf{Min} & \textbf{Mean} & \textbf{Median} & \textbf{Max} & \textbf{Std Dev} \\
+\midrule
+Handshake (ms) & 12.4 & 735.8 & 286.5 & 1978.8 & 721.5 \\
+Artifact Size (KB) & 2.2 & 253.7 & 24.0 & 1355.3 & 446.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Suites Ranked by Performance}
+
+\begin{table}[H]
+\centering
+\caption{Top 5 Fastest ChaCha20-Poly1305 Suites}
+\begin{tabular}{r l l l r}
+\toprule
+\textbf{Rank} & \textbf{KEM} & \textbf{Signature} & \textbf{Level} & \textbf{Time (ms)} \\
+\midrule
+1 & ML-KEM-512 & ML-DSA-44 & L1 & 12.4 \\
+2 & ML-KEM-1024 & ML-DSA-87 & L5 & 13.5 \\
+3 & ML-KEM-1024 & Falcon-1024 & L5 & 15.1 \\
+4 & ML-KEM-768 & ML-DSA-65 & L3 & 15.7 \\
+5 & ML-KEM-512 & Falcon-512 & L1 & 17.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{ASCON-128a Analysis}
+\label{sec:aead-ascon128a}
+
+This section analyzes all 24 cipher suites using \textbf{ASCON-128a} as the AEAD algorithm.
+
+\subsubsection{Statistical Summary}
+
+\begin{table}[H]
+\centering
+\caption{ASCON-128a Suite Performance Statistics}
+\begin{tabular}{l r r r r r}
+\toprule
+\textbf{Metric} & \textbf{Min} & \textbf{Mean} & \textbf{Median} & \textbf{Max} & \textbf{Std Dev} \\
+\midrule
+Handshake (ms) & 10.7 & 771.6 & 603.7 & 2517.5 & 760.2 \\
+Artifact Size (KB) & 2.2 & 253.7 & 24.0 & 1355.3 & 446.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Suites Ranked by Performance}
+
+\begin{table}[H]
+\centering
+\caption{Top 5 Fastest ASCON-128a Suites}
+\begin{tabular}{r l l l r}
+\toprule
+\textbf{Rank} & \textbf{KEM} & \textbf{Signature} & \textbf{Level} & \textbf{Time (ms)} \\
+\midrule
+1 & ML-KEM-512 & Falcon-512 & L1 & 10.7 \\
+2 & ML-KEM-512 & ML-DSA-44 & L1 & 12.3 \\
+3 & ML-KEM-768 & ML-DSA-65 & L3 & 14.7 \\
+4 & ML-KEM-1024 & ML-DSA-87 & L5 & 18.0 \\
+5 & ML-KEM-1024 & Falcon-1024 & L5 & 28.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==============================================================================
+\section{NIST Security Level Analysis}
+%==============================================================================
+
+This section compares cipher suite performance segmented by NIST security level.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/level_radar.pdf}
+    \caption{NIST Security Level Comparison (Radar Chart)}
+    \label{fig:level-radar}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/aead_level_heatmap.pdf}
+    \caption{Handshake Time by AEAD $\times$ NIST Level (Heatmap)}
+    \label{fig:aead-level-heatmap}
+\end{figure}
+
+
+\subsection{NIST L1 Security Level Analysis}
+\label{sec:level-l1}
+
+This section analyzes all 27 cipher suites at \textbf{NIST L1} security level.
+
+\subsubsection{Performance Distribution}
+
+\begin{itemize}
+    \item \textbf{Fastest:} 10.7 ms
+    \item \textbf{Average:} 395.0 ms
+    \item \textbf{Slowest:} 1198.7 ms
+    \item \textbf{Median:} 137.5 ms
+\end{itemize}
+
+\subsubsection{Algorithm Coverage}
+
+\begin{table}[H]
+\centering
+\caption{Algorithms at L1 Security Level}
+\begin{tabular}{l l}
+\toprule
+\textbf{Type} & \textbf{Algorithms} \\
+\midrule
+KEM & CMcE-348864, HQC-128, ML-KEM-512 \\
+Signature & Falcon-512, ML-DSA-44, SPX-128s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{NIST L3 Security Level Analysis}
+\label{sec:level-l3}
+
+This section analyzes all 17 cipher suites at \textbf{NIST L3} security level.
+
+\subsubsection{Performance Distribution}
+
+\begin{itemize}
+    \item \textbf{Fastest:} 14.7 ms
+    \item \textbf{Average:} 926.4 ms
+    \item \textbf{Slowest:} 2189.2 ms
+    \item \textbf{Median:} 1161.0 ms
+\end{itemize}
+
+\subsubsection{Algorithm Coverage}
+
+\begin{table}[H]
+\centering
+\caption{Algorithms at L3 Security Level}
+\begin{tabular}{l l}
+\toprule
+\textbf{Type} & \textbf{Algorithms} \\
+\midrule
+KEM & CMcE-460896, HQC-192, ML-KEM-768 \\
+Signature & ML-DSA-65, SPX-192s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{NIST L5 Security Level Analysis}
+\label{sec:level-l5}
+
+This section analyzes all 27 cipher suites at \textbf{NIST L5} security level.
+
+\subsubsection{Performance Distribution}
+
+\begin{itemize}
+    \item \textbf{Fastest:} 13.5 ms
+    \item \textbf{Average:} 885.0 ms
+    \item \textbf{Slowest:} 2517.5 ms
+    \item \textbf{Median:} 1149.1 ms
+\end{itemize}
+
+\subsubsection{Algorithm Coverage}
+
+\begin{table}[H]
+\centering
+\caption{Algorithms at L5 Security Level}
+\begin{tabular}{l l}
+\toprule
+\textbf{Type} & \textbf{Algorithms} \\
+\midrule
+KEM & CMcE-8192128, HQC-256, ML-KEM-1024 \\
+Signature & Falcon-1024, ML-DSA-87, SPX-256s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%==============================================================================
+\section{Algorithm Deep Dive}
+%==============================================================================
+
+\subsection{KEM Performance Analysis}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/kem_by_aead_bar.pdf}
+    \caption{KEM Performance Grouped by AEAD Algorithm}
+    \label{fig:kem-by-aead}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/kem_size_stacked.pdf}
+    \caption{KEM Artifact Size Composition}
+    \label{fig:kem-sizes}
+\end{figure}
+
+\subsection{Signature Performance Analysis}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/sig_by_aead_bar.pdf}
+    \caption{Signature Performance Grouped by AEAD Algorithm}
+    \label{fig:sig-by-aead}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/sig_sizes.pdf}
+    \caption{Digital Signature Sizes by Algorithm}
+    \label{fig:sig-sizes}
+\end{figure}
+
+%==============================================================================
+\section{Cross-Algorithm Comparison}
+%==============================================================================
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/kem_sig_heatmap.pdf}
+    \caption{Complete Handshake Time Matrix (KEM $\times$ Signature)}
+    \label{fig:full-heatmap}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/top_bottom_suites.pdf}
+    \caption{Top 10 Fastest and Slowest Suites}
+    \label{fig:top-bottom}
+\end{figure}
+
+%==============================================================================
+\section{Individual Suite Profiles}
+%==============================================================================
+
+This section provides detailed metrics for each of the 71 successfully
+tested cipher suites. Suites are ordered by handshake performance.
+
+
+\newpage
+\subsection{Suite 1: ML-KEM-512 + Falcon-512}
+\label{suite:cs-mlkem512-ascon128a-falcon512}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem512-ascon128a-falcon512}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem512-ascon128a-falcon512} \\
+NIST Level & L1 \\
+KEM & ML-KEM-512 \\
+Signature & Falcon-512 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 10.65 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.251 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.577 ms \\
+Primitive Total & 0.828 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 800 bytes (0.8 KB) \\
+Ciphertext & 768 bytes \\
+Signature & 657 bytes (0.64 KB) \\
+Total Artifacts & 2,225 bytes (2.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 2: ML-KEM-512 + ML-DSA-44}
+\label{suite:cs-mlkem512-ascon128a-mldsa44}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem512-ascon128a-mldsa44}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem512-ascon128a-mldsa44} \\
+NIST Level & L1 \\
+KEM & ML-KEM-512 \\
+Signature & ML-DSA-44 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 12.31 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.293 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.768 ms \\
+Primitive Total & 1.061 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 800 bytes (0.8 KB) \\
+Ciphertext & 768 bytes \\
+Signature & 2,420 bytes (2.36 KB) \\
+Total Artifacts & 3,988 bytes (3.9 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 3: ML-KEM-512 + ML-DSA-44}
+\label{suite:cs-mlkem512-chacha20poly1305-mldsa44}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem512-chacha20poly1305-mldsa44}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem512-chacha20poly1305-mldsa44} \\
+NIST Level & L1 \\
+KEM & ML-KEM-512 \\
+Signature & ML-DSA-44 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 12.45 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.253 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.800 ms \\
+Primitive Total & 1.053 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 800 bytes (0.8 KB) \\
+Ciphertext & 768 bytes \\
+Signature & 2,420 bytes (2.36 KB) \\
+Total Artifacts & 3,988 bytes (3.9 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 4: ML-KEM-1024 + ML-DSA-87}
+\label{suite:cs-mlkem1024-chacha20poly1305-mldsa87}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem1024-chacha20poly1305-mldsa87}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem1024-chacha20poly1305-mldsa87} \\
+NIST Level & L5 \\
+KEM & ML-KEM-1024 \\
+Signature & ML-DSA-87 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 13.48 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.280 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 1.126 ms \\
+Primitive Total & 1.406 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,568 bytes (1.5 KB) \\
+Ciphertext & 1,568 bytes \\
+Signature & 4,627 bytes (4.52 KB) \\
+Total Artifacts & 7,763 bytes (7.6 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 5: ML-KEM-512 + Falcon-512}
+\label{suite:cs-mlkem512-aesgcm-falcon512}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem512-aesgcm-falcon512}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem512-aesgcm-falcon512} \\
+NIST Level & L1 \\
+KEM & ML-KEM-512 \\
+Signature & Falcon-512 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 14.56 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.347 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.602 ms \\
+Primitive Total & 0.949 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 800 bytes (0.8 KB) \\
+Ciphertext & 768 bytes \\
+Signature & 654 bytes (0.64 KB) \\
+Total Artifacts & 2,222 bytes (2.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 6: ML-KEM-1024 + ML-DSA-87}
+\label{suite:cs-mlkem1024-aesgcm-mldsa87}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem1024-aesgcm-mldsa87}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem1024-aesgcm-mldsa87} \\
+NIST Level & L5 \\
+KEM & ML-KEM-1024 \\
+Signature & ML-DSA-87 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 14.62 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.277 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 1.134 ms \\
+Primitive Total & 1.411 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,568 bytes (1.5 KB) \\
+Ciphertext & 1,568 bytes \\
+Signature & 4,627 bytes (4.52 KB) \\
+Total Artifacts & 7,763 bytes (7.6 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 7: ML-KEM-768 + ML-DSA-65}
+\label{suite:cs-mlkem768-ascon128a-mldsa65}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem768-ascon128a-mldsa65}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem768-ascon128a-mldsa65} \\
+NIST Level & L3 \\
+KEM & ML-KEM-768 \\
+Signature & ML-DSA-65 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 14.73 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.358 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.880 ms \\
+Primitive Total & 1.238 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,184 bytes (1.2 KB) \\
+Ciphertext & 1,088 bytes \\
+Signature & 3,309 bytes (3.23 KB) \\
+Total Artifacts & 5,581 bytes (5.5 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 8: ML-KEM-1024 + Falcon-1024}
+\label{suite:cs-mlkem1024-chacha20poly1305-falcon1024}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem1024-chacha20poly1305-falcon1024}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem1024-chacha20poly1305-falcon1024} \\
+NIST Level & L5 \\
+KEM & ML-KEM-1024 \\
+Signature & Falcon-1024 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 15.12 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.316 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.702 ms \\
+Primitive Total & 1.018 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,568 bytes (1.5 KB) \\
+Ciphertext & 1,568 bytes \\
+Signature & 1,273 bytes (1.24 KB) \\
+Total Artifacts & 4,409 bytes (4.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 9: ML-KEM-768 + ML-DSA-65}
+\label{suite:cs-mlkem768-chacha20poly1305-mldsa65}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem768-chacha20poly1305-mldsa65}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem768-chacha20poly1305-mldsa65} \\
+NIST Level & L3 \\
+KEM & ML-KEM-768 \\
+Signature & ML-DSA-65 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 15.68 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.295 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.877 ms \\
+Primitive Total & 1.172 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,184 bytes (1.2 KB) \\
+Ciphertext & 1,088 bytes \\
+Signature & 3,309 bytes (3.23 KB) \\
+Total Artifacts & 5,581 bytes (5.5 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 10: ML-KEM-512 + Falcon-512}
+\label{suite:cs-mlkem512-chacha20poly1305-falcon512}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem512-chacha20poly1305-falcon512}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem512-chacha20poly1305-falcon512} \\
+NIST Level & L1 \\
+KEM & ML-KEM-512 \\
+Signature & Falcon-512 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 17.09 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.272 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.574 ms \\
+Primitive Total & 0.846 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 800 bytes (0.8 KB) \\
+Ciphertext & 768 bytes \\
+Signature & 652 bytes (0.64 KB) \\
+Total Artifacts & 2,220 bytes (2.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 11: ML-KEM-1024 + ML-DSA-87}
+\label{suite:cs-mlkem1024-ascon128a-mldsa87}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem1024-ascon128a-mldsa87}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem1024-ascon128a-mldsa87} \\
+NIST Level & L5 \\
+KEM & ML-KEM-1024 \\
+Signature & ML-DSA-87 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 18.00 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.275 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 1.129 ms \\
+Primitive Total & 1.404 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,568 bytes (1.5 KB) \\
+Ciphertext & 1,568 bytes \\
+Signature & 4,627 bytes (4.52 KB) \\
+Total Artifacts & 7,763 bytes (7.6 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 12: ML-KEM-512 + ML-DSA-44}
+\label{suite:cs-mlkem512-aesgcm-mldsa44}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem512-aesgcm-mldsa44}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem512-aesgcm-mldsa44} \\
+NIST Level & L1 \\
+KEM & ML-KEM-512 \\
+Signature & ML-DSA-44 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 18.98 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.252 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 1.496 ms \\
+Primitive Total & 1.748 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 800 bytes (0.8 KB) \\
+Ciphertext & 768 bytes \\
+Signature & 2,420 bytes (2.36 KB) \\
+Total Artifacts & 3,988 bytes (3.9 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 13: ML-KEM-768 + ML-DSA-65}
+\label{suite:cs-mlkem768-aesgcm-mldsa65}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem768-aesgcm-mldsa65}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem768-aesgcm-mldsa65} \\
+NIST Level & L3 \\
+KEM & ML-KEM-768 \\
+Signature & ML-DSA-65 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 19.49 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.424 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.903 ms \\
+Primitive Total & 1.327 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,184 bytes (1.2 KB) \\
+Ciphertext & 1,088 bytes \\
+Signature & 3,309 bytes (3.23 KB) \\
+Total Artifacts & 5,581 bytes (5.5 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 14: ML-KEM-1024 + Falcon-1024}
+\label{suite:cs-mlkem1024-aesgcm-falcon1024}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem1024-aesgcm-falcon1024}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem1024-aesgcm-falcon1024} \\
+NIST Level & L5 \\
+KEM & ML-KEM-1024 \\
+Signature & Falcon-1024 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 21.40 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.384 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 4.602 ms \\
+Primitive Total & 4.986 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,568 bytes (1.5 KB) \\
+Ciphertext & 1,568 bytes \\
+Signature & 1,270 bytes (1.24 KB) \\
+Total Artifacts & 4,406 bytes (4.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 15: ML-KEM-1024 + Falcon-1024}
+\label{suite:cs-mlkem1024-ascon128a-falcon1024}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem1024-ascon128a-falcon1024}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem1024-ascon128a-falcon1024} \\
+NIST Level & L5 \\
+KEM & ML-KEM-1024 \\
+Signature & Falcon-1024 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 28.25 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 2.036 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 9.828 ms \\
+Primitive Total & 11.864 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,568 bytes (1.5 KB) \\
+Ciphertext & 1,568 bytes \\
+Signature & 1,270 bytes (1.24 KB) \\
+Total Artifacts & 4,406 bytes (4.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite demonstrates \textbf{excellent} handshake performance, suitable for real-time UAV applications. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 16: HQC-128 + ML-DSA-44}
+\label{suite:cs-hqc128-aesgcm-mldsa44}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc128-aesgcm-mldsa44}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc128-aesgcm-mldsa44} \\
+NIST Level & L1 \\
+KEM & HQC-128 \\
+Signature & ML-DSA-44 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 61.19 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 44.850 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.778 ms \\
+Primitive Total & 45.628 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 2,249 bytes (2.2 KB) \\
+Ciphertext & 4,433 bytes \\
+Signature & 2,420 bytes (2.36 KB) \\
+Total Artifacts & 9,102 bytes (8.9 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 17: HQC-128 + Falcon-512}
+\label{suite:cs-hqc128-chacha20poly1305-falcon512}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc128-chacha20poly1305-falcon512}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc128-chacha20poly1305-falcon512} \\
+NIST Level & L1 \\
+KEM & HQC-128 \\
+Signature & Falcon-512 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 61.74 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 45.570 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.642 ms \\
+Primitive Total & 46.212 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 2,249 bytes (2.2 KB) \\
+Ciphertext & 4,433 bytes \\
+Signature & 655 bytes (0.64 KB) \\
+Total Artifacts & 7,337 bytes (7.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 18: HQC-128 + ML-DSA-44}
+\label{suite:cs-hqc128-chacha20poly1305-mldsa44}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc128-chacha20poly1305-mldsa44}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc128-chacha20poly1305-mldsa44} \\
+NIST Level & L1 \\
+KEM & HQC-128 \\
+Signature & ML-DSA-44 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 62.21 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 44.915 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.744 ms \\
+Primitive Total & 45.659 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 2,249 bytes (2.2 KB) \\
+Ciphertext & 4,433 bytes \\
+Signature & 2,420 bytes (2.36 KB) \\
+Total Artifacts & 9,102 bytes (8.9 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 19: HQC-128 + ML-DSA-44}
+\label{suite:cs-hqc128-ascon128a-mldsa44}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc128-ascon128a-mldsa44}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc128-ascon128a-mldsa44} \\
+NIST Level & L1 \\
+KEM & HQC-128 \\
+Signature & ML-DSA-44 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 63.29 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 44.910 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.760 ms \\
+Primitive Total & 45.670 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 2,249 bytes (2.2 KB) \\
+Ciphertext & 4,433 bytes \\
+Signature & 2,420 bytes (2.36 KB) \\
+Total Artifacts & 9,102 bytes (8.9 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 20: HQC-128 + Falcon-512}
+\label{suite:cs-hqc128-aesgcm-falcon512}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc128-aesgcm-falcon512}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc128-aesgcm-falcon512} \\
+NIST Level & L1 \\
+KEM & HQC-128 \\
+Signature & Falcon-512 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 71.71 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 45.866 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 6.603 ms \\
+Primitive Total & 52.469 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 2,249 bytes (2.2 KB) \\
+Ciphertext & 4,433 bytes \\
+Signature & 654 bytes (0.64 KB) \\
+Total Artifacts & 7,336 bytes (7.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 21: HQC-128 + Falcon-512}
+\label{suite:cs-hqc128-ascon128a-falcon512}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc128-ascon128a-falcon512}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc128-ascon128a-falcon512} \\
+NIST Level & L1 \\
+KEM & HQC-128 \\
+Signature & Falcon-512 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 73.57 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 44.876 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 7.141 ms \\
+Primitive Total & 52.017 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 2,249 bytes (2.2 KB) \\
+Ciphertext & 4,433 bytes \\
+Signature & 655 bytes (0.64 KB) \\
+Total Artifacts & 7,337 bytes (7.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 22: CMcE-348864 + ML-DSA-44}
+\label{suite:cs-classicmceliece348864-ascon128a-mldsa44}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece348864-ascon128a-mldsa44}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece348864-ascon128a-mldsa44} \\
+NIST Level & L1 \\
+KEM & CMcE-348864 \\
+Signature & ML-DSA-44 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 128.77 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.606 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 3.066 ms \\
+Primitive Total & 3.672 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 261,120 bytes (255.0 KB) \\
+Ciphertext & 96 bytes \\
+Signature & 2,420 bytes (2.36 KB) \\
+Total Artifacts & 263,636 bytes (257.5 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. The large artifact size (257 KB) may impact bandwidth-constrained links. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 23: CMcE-348864 + Falcon-512}
+\label{suite:cs-classicmceliece348864-chacha20poly1305-falcon512}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece348864-chacha20poly1305-falcon512}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece348864-chacha20poly1305-falcon512} \\
+NIST Level & L1 \\
+KEM & CMcE-348864 \\
+Signature & Falcon-512 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 137.51 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 1.939 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 4.889 ms \\
+Primitive Total & 6.828 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 261,120 bytes (255.0 KB) \\
+Ciphertext & 96 bytes \\
+Signature & 651 bytes (0.64 KB) \\
+Total Artifacts & 261,867 bytes (255.7 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. The large artifact size (256 KB) may impact bandwidth-constrained links. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 24: HQC-192 + ML-DSA-65}
+\label{suite:cs-hqc192-aesgcm-mldsa65}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc192-aesgcm-mldsa65}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc192-aesgcm-mldsa65} \\
+NIST Level & L3 \\
+KEM & HQC-192 \\
+Signature & ML-DSA-65 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 164.50 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 137.117 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 3.146 ms \\
+Primitive Total & 140.263 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 4,522 bytes (4.4 KB) \\
+Ciphertext & 8,978 bytes \\
+Signature & 3,309 bytes (3.23 KB) \\
+Total Artifacts & 16,809 bytes (16.4 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 25: HQC-192 + ML-DSA-65}
+\label{suite:cs-hqc192-ascon128a-mldsa65}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc192-ascon128a-mldsa65}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc192-ascon128a-mldsa65} \\
+NIST Level & L3 \\
+KEM & HQC-192 \\
+Signature & ML-DSA-65 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 166.06 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 135.976 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.900 ms \\
+Primitive Total & 136.876 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 4,522 bytes (4.4 KB) \\
+Ciphertext & 8,978 bytes \\
+Signature & 3,309 bytes (3.23 KB) \\
+Total Artifacts & 16,809 bytes (16.4 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 26: CMcE-348864 + Falcon-512}
+\label{suite:cs-classicmceliece348864-aesgcm-falcon512}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece348864-aesgcm-falcon512}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece348864-aesgcm-falcon512} \\
+NIST Level & L1 \\
+KEM & CMcE-348864 \\
+Signature & Falcon-512 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 166.69 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.823 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 15.280 ms \\
+Primitive Total & 16.103 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 261,120 bytes (255.0 KB) \\
+Ciphertext & 96 bytes \\
+Signature & 653 bytes (0.64 KB) \\
+Total Artifacts & 261,869 bytes (255.7 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite shows \textbf{good} performance, acceptable for most mission-critical operations. The large artifact size (256 KB) may impact bandwidth-constrained links. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 27: HQC-192 + ML-DSA-65}
+\label{suite:cs-hqc192-chacha20poly1305-mldsa65}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc192-chacha20poly1305-mldsa65}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc192-chacha20poly1305-mldsa65} \\
+NIST Level & L3 \\
+KEM & HQC-192 \\
+Signature & ML-DSA-65 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 216.74 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 135.916 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.936 ms \\
+Primitive Total & 136.852 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 4,522 bytes (4.4 KB) \\
+Ciphertext & 8,978 bytes \\
+Signature & 3,309 bytes (3.23 KB) \\
+Total Artifacts & 16,809 bytes (16.4 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 28: CMcE-348864 + Falcon-512}
+\label{suite:cs-classicmceliece348864-ascon128a-falcon512}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece348864-ascon128a-falcon512}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece348864-ascon128a-falcon512} \\
+NIST Level & L1 \\
+KEM & CMcE-348864 \\
+Signature & Falcon-512 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 232.56 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.710 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 2.622 ms \\
+Primitive Total & 3.332 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 261,120 bytes (255.0 KB) \\
+Ciphertext & 96 bytes \\
+Signature & 655 bytes (0.64 KB) \\
+Total Artifacts & 261,871 bytes (255.7 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. The large artifact size (256 KB) may impact bandwidth-constrained links. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 29: CMcE-460896 + ML-DSA-65}
+\label{suite:cs-classicmceliece460896-aesgcm-mldsa65}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece460896-aesgcm-mldsa65}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece460896-aesgcm-mldsa65} \\
+NIST Level & L3 \\
+KEM & CMcE-460896 \\
+Signature & ML-DSA-65 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 249.26 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 1.446 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 6.945 ms \\
+Primitive Total & 8.391 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 524,160 bytes (511.9 KB) \\
+Ciphertext & 156 bytes \\
+Signature & 3,309 bytes (3.23 KB) \\
+Total Artifacts & 527,625 bytes (515.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. The large artifact size (515 KB) may impact bandwidth-constrained links. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 30: CMcE-348864 + ML-DSA-44}
+\label{suite:cs-classicmceliece348864-chacha20poly1305-mldsa44}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece348864-chacha20poly1305-mldsa44}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece348864-chacha20poly1305-mldsa44} \\
+NIST Level & L1 \\
+KEM & CMcE-348864 \\
+Signature & ML-DSA-44 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 270.86 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.740 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 2.850 ms \\
+Primitive Total & 3.590 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 261,120 bytes (255.0 KB) \\
+Ciphertext & 96 bytes \\
+Signature & 2,420 bytes (2.36 KB) \\
+Total Artifacts & 263,636 bytes (257.5 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. The large artifact size (257 KB) may impact bandwidth-constrained links. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 31: HQC-256 + Falcon-1024}
+\label{suite:cs-hqc256-ascon128a-falcon1024}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc256-ascon128a-falcon1024}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc256-ascon128a-falcon1024} \\
+NIST Level & L5 \\
+KEM & HQC-256 \\
+Signature & Falcon-1024 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 279.61 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 249.399 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.719 ms \\
+Primitive Total & 250.118 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 7,245 bytes (7.1 KB) \\
+Ciphertext & 14,421 bytes \\
+Signature & 1,273 bytes (1.24 KB) \\
+Total Artifacts & 22,939 bytes (22.4 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 32: HQC-256 + ML-DSA-87}
+\label{suite:cs-hqc256-ascon128a-mldsa87}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc256-ascon128a-mldsa87}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc256-ascon128a-mldsa87} \\
+NIST Level & L5 \\
+KEM & HQC-256 \\
+Signature & ML-DSA-87 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 280.19 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 250.108 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 1.161 ms \\
+Primitive Total & 251.269 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 7,245 bytes (7.1 KB) \\
+Ciphertext & 14,421 bytes \\
+Signature & 4,627 bytes (4.52 KB) \\
+Total Artifacts & 26,293 bytes (25.7 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 33: HQC-256 + Falcon-1024}
+\label{suite:cs-hqc256-chacha20poly1305-falcon1024}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc256-chacha20poly1305-falcon1024}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc256-chacha20poly1305-falcon1024} \\
+NIST Level & L5 \\
+KEM & HQC-256 \\
+Signature & Falcon-1024 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 282.41 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 256.413 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 0.798 ms \\
+Primitive Total & 257.211 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 7,245 bytes (7.1 KB) \\
+Ciphertext & 14,421 bytes \\
+Signature & 1,272 bytes (1.24 KB) \\
+Total Artifacts & 22,938 bytes (22.4 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 34: HQC-256 + ML-DSA-87}
+\label{suite:cs-hqc256-aesgcm-mldsa87}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc256-aesgcm-mldsa87}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc256-aesgcm-mldsa87} \\
+NIST Level & L5 \\
+KEM & HQC-256 \\
+Signature & ML-DSA-87 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 282.69 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 250.041 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 3.351 ms \\
+Primitive Total & 253.392 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 7,245 bytes (7.1 KB) \\
+Ciphertext & 14,421 bytes \\
+Signature & 4,627 bytes (4.52 KB) \\
+Total Artifacts & 26,293 bytes (25.7 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 35: HQC-256 + ML-DSA-87}
+\label{suite:cs-hqc256-chacha20poly1305-mldsa87}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc256-chacha20poly1305-mldsa87}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc256-chacha20poly1305-mldsa87} \\
+NIST Level & L5 \\
+KEM & HQC-256 \\
+Signature & ML-DSA-87 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 285.53 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 249.511 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 1.265 ms \\
+Primitive Total & 250.776 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 7,245 bytes (7.1 KB) \\
+Ciphertext & 14,421 bytes \\
+Signature & 4,627 bytes (4.52 KB) \\
+Total Artifacts & 26,293 bytes (25.7 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 36: CMcE-460896 + ML-DSA-65}
+\label{suite:cs-classicmceliece460896-chacha20poly1305-mldsa65}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece460896-chacha20poly1305-mldsa65}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece460896-chacha20poly1305-mldsa65} \\
+NIST Level & L3 \\
+KEM & CMcE-460896 \\
+Signature & ML-DSA-65 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 287.49 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 1.396 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 5.694 ms \\
+Primitive Total & 7.090 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 524,160 bytes (511.9 KB) \\
+Ciphertext & 156 bytes \\
+Signature & 3,309 bytes (3.23 KB) \\
+Total Artifacts & 527,625 bytes (515.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. The large artifact size (515 KB) may impact bandwidth-constrained links. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 37: HQC-256 + Falcon-1024}
+\label{suite:cs-hqc256-aesgcm-falcon1024}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc256-aesgcm-falcon1024}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc256-aesgcm-falcon1024} \\
+NIST Level & L5 \\
+KEM & HQC-256 \\
+Signature & Falcon-1024 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 292.80 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 251.017 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 9.253 ms \\
+Primitive Total & 260.270 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 7,245 bytes (7.1 KB) \\
+Ciphertext & 14,421 bytes \\
+Signature & 1,272 bytes (1.24 KB) \\
+Total Artifacts & 22,938 bytes (22.4 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 38: CMcE-348864 + ML-DSA-44}
+\label{suite:cs-classicmceliece348864-aesgcm-mldsa44}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece348864-aesgcm-mldsa44}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece348864-aesgcm-mldsa44} \\
+NIST Level & L1 \\
+KEM & CMcE-348864 \\
+Signature & ML-DSA-44 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 367.36 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.636 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 3.302 ms \\
+Primitive Total & 3.938 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 261,120 bytes (255.0 KB) \\
+Ciphertext & 96 bytes \\
+Signature & 2,420 bytes (2.36 KB) \\
+Total Artifacts & 263,636 bytes (257.5 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. The large artifact size (257 KB) may impact bandwidth-constrained links. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 39: CMcE-8192128 + Falcon-1024}
+\label{suite:cs-classicmceliece8192128-aesgcm-falcon1024}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece8192128-aesgcm-falcon1024}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece8192128-aesgcm-falcon1024} \\
+NIST Level & L5 \\
+KEM & CMcE-8192128 \\
+Signature & Falcon-1024 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 712.66 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 3.232 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 20.170 ms \\
+Primitive Total & 23.402 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,357,824 bytes (1326.0 KB) \\
+Ciphertext & 208 bytes \\
+Signature & 1,282 bytes (1.25 KB) \\
+Total Artifacts & 1,359,314 bytes (1327.5 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. The large artifact size (1327 KB) may impact bandwidth-constrained links. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 40: ML-KEM-512 + SPX-128s}
+\label{suite:cs-mlkem512-chacha20poly1305-sphincs128s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem512-chacha20poly1305-sphincs128s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem512-chacha20poly1305-sphincs128s} \\
+NIST Level & L1 \\
+KEM & ML-KEM-512 \\
+Signature & SPX-128s \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 829.25 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.248 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 1.921 ms \\
+Primitive Total & 2.169 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 800 bytes (0.8 KB) \\
+Ciphertext & 768 bytes \\
+Signature & 7,856 bytes (7.67 KB) \\
+Total Artifacts & 9,424 bytes (9.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 41: ML-KEM-512 + SPX-128s}
+\label{suite:cs-mlkem512-aesgcm-sphincs128s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem512-aesgcm-sphincs128s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem512-aesgcm-sphincs128s} \\
+NIST Level & L1 \\
+KEM & ML-KEM-512 \\
+Signature & SPX-128s \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 869.32 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.276 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 8.181 ms \\
+Primitive Total & 8.457 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 800 bytes (0.8 KB) \\
+Ciphertext & 768 bytes \\
+Signature & 7,856 bytes (7.67 KB) \\
+Total Artifacts & 9,424 bytes (9.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 42: HQC-128 + SPX-128s}
+\label{suite:cs-hqc128-aesgcm-sphincs128s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc128-aesgcm-sphincs128s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc128-aesgcm-sphincs128s} \\
+NIST Level & L1 \\
+KEM & HQC-128 \\
+Signature & SPX-128s \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 869.51 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 46.135 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 3.437 ms \\
+Primitive Total & 49.572 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 2,249 bytes (2.2 KB) \\
+Ciphertext & 4,433 bytes \\
+Signature & 7,856 bytes (7.67 KB) \\
+Total Artifacts & 14,538 bytes (14.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 43: HQC-128 + SPX-128s}
+\label{suite:cs-hqc128-ascon128a-sphincs128s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc128-ascon128a-sphincs128s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc128-ascon128a-sphincs128s} \\
+NIST Level & L1 \\
+KEM & HQC-128 \\
+Signature & SPX-128s \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 927.23 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 50.101 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 1.928 ms \\
+Primitive Total & 52.029 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 2,249 bytes (2.2 KB) \\
+Ciphertext & 4,433 bytes \\
+Signature & 7,856 bytes (7.67 KB) \\
+Total Artifacts & 14,538 bytes (14.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 44: ML-KEM-512 + SPX-128s}
+\label{suite:cs-mlkem512-ascon128a-sphincs128s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem512-ascon128a-sphincs128s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem512-ascon128a-sphincs128s} \\
+NIST Level & L1 \\
+KEM & ML-KEM-512 \\
+Signature & SPX-128s \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 985.24 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.285 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 2.120 ms \\
+Primitive Total & 2.405 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 800 bytes (0.8 KB) \\
+Ciphertext & 768 bytes \\
+Signature & 7,856 bytes (7.67 KB) \\
+Total Artifacts & 9,424 bytes (9.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite has \textbf{moderate} performance, suitable for non-time-critical applications. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 45: CMcE-348864 + SPX-128s}
+\label{suite:cs-classicmceliece348864-ascon128a-sphincs128s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece348864-ascon128a-sphincs128s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece348864-ascon128a-sphincs128s} \\
+NIST Level & L1 \\
+KEM & CMcE-348864 \\
+Signature & SPX-128s \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1017.36 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 1.077 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 6.589 ms \\
+Primitive Total & 7.666 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 261,120 bytes (255.0 KB) \\
+Ciphertext & 96 bytes \\
+Signature & 7,856 bytes (7.67 KB) \\
+Total Artifacts & 269,072 bytes (262.8 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (263 KB) may impact bandwidth-constrained links. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 46: CMcE-348864 + SPX-128s}
+\label{suite:cs-classicmceliece348864-chacha20poly1305-sphincs128s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece348864-chacha20poly1305-sphincs128s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece348864-chacha20poly1305-sphincs128s} \\
+NIST Level & L1 \\
+KEM & CMcE-348864 \\
+Signature & SPX-128s \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1036.27 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 1.043 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 8.561 ms \\
+Primitive Total & 9.604 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 261,120 bytes (255.0 KB) \\
+Ciphertext & 96 bytes \\
+Signature & 7,856 bytes (7.67 KB) \\
+Total Artifacts & 269,072 bytes (262.8 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (263 KB) may impact bandwidth-constrained links. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 47: HQC-128 + SPX-128s}
+\label{suite:cs-hqc128-chacha20poly1305-sphincs128s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc128-chacha20poly1305-sphincs128s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc128-chacha20poly1305-sphincs128s} \\
+NIST Level & L1 \\
+KEM & HQC-128 \\
+Signature & SPX-128s \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1147.51 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 74.809 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 3.699 ms \\
+Primitive Total & 78.508 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 2,249 bytes (2.2 KB) \\
+Ciphertext & 4,433 bytes \\
+Signature & 7,856 bytes (7.67 KB) \\
+Total Artifacts & 14,538 bytes (14.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 48: CMcE-8192128 + Falcon-1024}
+\label{suite:cs-classicmceliece8192128-ascon128a-falcon1024}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece8192128-ascon128a-falcon1024}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece8192128-ascon128a-falcon1024} \\
+NIST Level & L5 \\
+KEM & CMcE-8192128 \\
+Signature & Falcon-1024 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1149.12 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 3.072 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 12.043 ms \\
+Primitive Total & 15.115 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,357,824 bytes (1326.0 KB) \\
+Ciphertext & 208 bytes \\
+Signature & 1,271 bytes (1.24 KB) \\
+Total Artifacts & 1,359,303 bytes (1327.4 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (1327 KB) may impact bandwidth-constrained links. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 49: CMcE-460896 + ML-DSA-65}
+\label{suite:cs-classicmceliece460896-ascon128a-mldsa65}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece460896-ascon128a-mldsa65}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece460896-ascon128a-mldsa65} \\
+NIST Level & L3 \\
+KEM & CMcE-460896 \\
+Signature & ML-DSA-65 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1160.98 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 1.354 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 5.190 ms \\
+Primitive Total & 6.544 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 524,160 bytes (511.9 KB) \\
+Ciphertext & 156 bytes \\
+Signature & 3,309 bytes (3.23 KB) \\
+Total Artifacts & 527,625 bytes (515.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (515 KB) may impact bandwidth-constrained links. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 50: CMcE-348864 + SPX-128s}
+\label{suite:cs-classicmceliece348864-aesgcm-sphincs128s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece348864-aesgcm-sphincs128s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece348864-aesgcm-sphincs128s} \\
+NIST Level & L1 \\
+KEM & CMcE-348864 \\
+Signature & SPX-128s \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1198.66 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.578 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 7.471 ms \\
+Primitive Total & 8.049 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 261,120 bytes (255.0 KB) \\
+Ciphertext & 96 bytes \\
+Signature & 7,856 bytes (7.67 KB) \\
+Total Artifacts & 269,072 bytes (262.8 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (263 KB) may impact bandwidth-constrained links. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 51: ML-KEM-1024 + SPX-256s}
+\label{suite:cs-mlkem1024-aesgcm-sphincs256s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem1024-aesgcm-sphincs256s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem1024-aesgcm-sphincs256s} \\
+NIST Level & L5 \\
+KEM & ML-KEM-1024 \\
+Signature & SPX-256s \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1227.39 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.307 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 7.724 ms \\
+Primitive Total & 8.031 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,568 bytes (1.5 KB) \\
+Ciphertext & 1,568 bytes \\
+Signature & 29,792 bytes (29.09 KB) \\
+Total Artifacts & 32,928 bytes (32.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 52: CMcE-8192128 + Falcon-1024}
+\label{suite:cs-classicmceliece8192128-chacha20poly1305-falcon1024}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece8192128-chacha20poly1305-falcon1024}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece8192128-chacha20poly1305-falcon1024} \\
+NIST Level & L5 \\
+KEM & CMcE-8192128 \\
+Signature & Falcon-1024 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1248.16 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 3.089 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 14.139 ms \\
+Primitive Total & 17.228 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,357,824 bytes (1326.0 KB) \\
+Ciphertext & 208 bytes \\
+Signature & 1,276 bytes (1.25 KB) \\
+Total Artifacts & 1,359,308 bytes (1327.4 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (1327 KB) may impact bandwidth-constrained links. Falcon offers compact signatures with fast verification. 
+\newpage
+\subsection{Suite 53: ML-KEM-1024 + SPX-256s}
+\label{suite:cs-mlkem1024-ascon128a-sphincs256s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem1024-ascon128a-sphincs256s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem1024-ascon128a-sphincs256s} \\
+NIST Level & L5 \\
+KEM & ML-KEM-1024 \\
+Signature & SPX-256s \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1250.65 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.512 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 6.582 ms \\
+Primitive Total & 7.094 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,568 bytes (1.5 KB) \\
+Ciphertext & 1,568 bytes \\
+Signature & 29,792 bytes (29.09 KB) \\
+Total Artifacts & 32,928 bytes (32.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 54: ML-KEM-1024 + SPX-256s}
+\label{suite:cs-mlkem1024-chacha20poly1305-sphincs256s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem1024-chacha20poly1305-sphincs256s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem1024-chacha20poly1305-sphincs256s} \\
+NIST Level & L5 \\
+KEM & ML-KEM-1024 \\
+Signature & SPX-256s \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1255.61 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.321 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 4.142 ms \\
+Primitive Total & 4.463 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,568 bytes (1.5 KB) \\
+Ciphertext & 1,568 bytes \\
+Signature & 29,792 bytes (29.09 KB) \\
+Total Artifacts & 32,928 bytes (32.2 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 55: CMcE-8192128 + ML-DSA-87}
+\label{suite:cs-classicmceliece8192128-aesgcm-mldsa87}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece8192128-aesgcm-mldsa87}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece8192128-aesgcm-mldsa87} \\
+NIST Level & L5 \\
+KEM & CMcE-8192128 \\
+Signature & ML-DSA-87 \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1268.08 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 3.289 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 14.915 ms \\
+Primitive Total & 18.204 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,357,824 bytes (1326.0 KB) \\
+Ciphertext & 208 bytes \\
+Signature & 4,627 bytes (4.52 KB) \\
+Total Artifacts & 1,362,659 bytes (1330.7 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (1331 KB) may impact bandwidth-constrained links. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 56: ML-KEM-768 + SPX-192s}
+\label{suite:cs-mlkem768-aesgcm-sphincs192s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem768-aesgcm-sphincs192s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem768-aesgcm-sphincs192s} \\
+NIST Level & L3 \\
+KEM & ML-KEM-768 \\
+Signature & SPX-192s \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1348.77 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.537 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 6.954 ms \\
+Primitive Total & 7.491 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,184 bytes (1.2 KB) \\
+Ciphertext & 1,088 bytes \\
+Signature & 16,224 bytes (15.84 KB) \\
+Total Artifacts & 18,496 bytes (18.1 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 57: CMcE-8192128 + ML-DSA-87}
+\label{suite:cs-classicmceliece8192128-ascon128a-mldsa87}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece8192128-ascon128a-mldsa87}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece8192128-ascon128a-mldsa87} \\
+NIST Level & L5 \\
+KEM & CMcE-8192128 \\
+Signature & ML-DSA-87 \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1353.97 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 3.215 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 12.330 ms \\
+Primitive Total & 15.545 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,357,824 bytes (1326.0 KB) \\
+Ciphertext & 208 bytes \\
+Signature & 4,627 bytes (4.52 KB) \\
+Total Artifacts & 1,362,659 bytes (1330.7 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (1331 KB) may impact bandwidth-constrained links. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 58: ML-KEM-768 + SPX-192s}
+\label{suite:cs-mlkem768-ascon128a-sphincs192s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem768-ascon128a-sphincs192s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem768-ascon128a-sphincs192s} \\
+NIST Level & L3 \\
+KEM & ML-KEM-768 \\
+Signature & SPX-192s \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1463.88 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.401 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 2.680 ms \\
+Primitive Total & 3.081 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,184 bytes (1.2 KB) \\
+Ciphertext & 1,088 bytes \\
+Signature & 16,224 bytes (15.84 KB) \\
+Total Artifacts & 18,496 bytes (18.1 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 59: HQC-256 + SPX-256s}
+\label{suite:cs-hqc256-aesgcm-sphincs256s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc256-aesgcm-sphincs256s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc256-aesgcm-sphincs256s} \\
+NIST Level & L5 \\
+KEM & HQC-256 \\
+Signature & SPX-256s \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1527.68 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 293.285 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 10.139 ms \\
+Primitive Total & 303.424 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 7,245 bytes (7.1 KB) \\
+Ciphertext & 14,421 bytes \\
+Signature & 29,792 bytes (29.09 KB) \\
+Total Artifacts & 51,458 bytes (50.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 60: HQC-192 + SPX-192s}
+\label{suite:cs-hqc192-ascon128a-sphincs192s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc192-ascon128a-sphincs192s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc192-ascon128a-sphincs192s} \\
+NIST Level & L3 \\
+KEM & HQC-192 \\
+Signature & SPX-192s \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1540.38 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 140.875 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 2.618 ms \\
+Primitive Total & 143.493 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 4,522 bytes (4.4 KB) \\
+Ciphertext & 8,978 bytes \\
+Signature & 16,224 bytes (15.84 KB) \\
+Total Artifacts & 29,724 bytes (29.0 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 61: HQC-192 + SPX-192s}
+\label{suite:cs-hqc192-aesgcm-sphincs192s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc192-aesgcm-sphincs192s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc192-aesgcm-sphincs192s} \\
+NIST Level & L3 \\
+KEM & HQC-192 \\
+Signature & SPX-192s \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1586.18 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 140.528 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 2.811 ms \\
+Primitive Total & 143.339 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 4,522 bytes (4.4 KB) \\
+Ciphertext & 8,978 bytes \\
+Signature & 16,224 bytes (15.84 KB) \\
+Total Artifacts & 29,724 bytes (29.0 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 62: HQC-256 + SPX-256s}
+\label{suite:cs-hqc256-chacha20poly1305-sphincs256s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc256-chacha20poly1305-sphincs256s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc256-chacha20poly1305-sphincs256s} \\
+NIST Level & L5 \\
+KEM & HQC-256 \\
+Signature & SPX-256s \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1606.98 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 279.335 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 5.817 ms \\
+Primitive Total & 285.152 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 7,245 bytes (7.1 KB) \\
+Ciphertext & 14,421 bytes \\
+Signature & 29,792 bytes (29.09 KB) \\
+Total Artifacts & 51,458 bytes (50.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 63: ML-KEM-768 + SPX-192s}
+\label{suite:cs-mlkem768-chacha20poly1305-sphincs192s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-mlkem768-chacha20poly1305-sphincs192s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-mlkem768-chacha20poly1305-sphincs192s} \\
+NIST Level & L3 \\
+KEM & ML-KEM-768 \\
+Signature & SPX-192s \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1641.91 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 0.485 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 4.255 ms \\
+Primitive Total & 4.740 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,184 bytes (1.2 KB) \\
+Ciphertext & 1,088 bytes \\
+Signature & 16,224 bytes (15.84 KB) \\
+Total Artifacts & 18,496 bytes (18.1 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 64: CMcE-8192128 + ML-DSA-87}
+\label{suite:cs-classicmceliece8192128-chacha20poly1305-mldsa87}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece8192128-chacha20poly1305-mldsa87}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece8192128-chacha20poly1305-mldsa87} \\
+NIST Level & L5 \\
+KEM & CMcE-8192128 \\
+Signature & ML-DSA-87 \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1650.92 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 3.312 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 16.085 ms \\
+Primitive Total & 19.397 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,357,824 bytes (1326.0 KB) \\
+Ciphertext & 208 bytes \\
+Signature & 4,627 bytes (4.52 KB) \\
+Total Artifacts & 1,362,659 bytes (1330.7 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (1331 KB) may impact bandwidth-constrained links. ML-DSA (Dilithium) provides a balanced trade-off between size and speed. 
+\newpage
+\subsection{Suite 65: HQC-256 + SPX-256s}
+\label{suite:cs-hqc256-ascon128a-sphincs256s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc256-ascon128a-sphincs256s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc256-ascon128a-sphincs256s} \\
+NIST Level & L5 \\
+KEM & HQC-256 \\
+Signature & SPX-256s \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1653.91 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 272.419 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 3.850 ms \\
+Primitive Total & 276.269 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 7,245 bytes (7.1 KB) \\
+Ciphertext & 14,421 bytes \\
+Signature & 29,792 bytes (29.09 KB) \\
+Total Artifacts & 51,458 bytes (50.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 66: HQC-192 + SPX-192s}
+\label{suite:cs-hqc192-chacha20poly1305-sphincs192s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-hqc192-chacha20poly1305-sphincs192s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-hqc192-chacha20poly1305-sphincs192s} \\
+NIST Level & L3 \\
+KEM & HQC-192 \\
+Signature & SPX-192s \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1704.12 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 136.198 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 2.645 ms \\
+Primitive Total & 138.843 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 4,522 bytes (4.4 KB) \\
+Ciphertext & 8,978 bytes \\
+Signature & 16,224 bytes (15.84 KB) \\
+Total Artifacts & 29,724 bytes (29.0 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 67: CMcE-8192128 + SPX-256s}
+\label{suite:cs-classicmceliece8192128-aesgcm-sphincs256s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece8192128-aesgcm-sphincs256s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece8192128-aesgcm-sphincs256s} \\
+NIST Level & L5 \\
+KEM & CMcE-8192128 \\
+Signature & SPX-256s \\
+AEAD & AES-256-GCM \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1776.62 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 4.097 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 15.834 ms \\
+Primitive Total & 19.931 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,357,824 bytes (1326.0 KB) \\
+Ciphertext & 208 bytes \\
+Signature & 29,792 bytes (29.09 KB) \\
+Total Artifacts & 1,387,824 bytes (1355.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (1355 KB) may impact bandwidth-constrained links. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 68: CMcE-8192128 + SPX-256s}
+\label{suite:cs-classicmceliece8192128-chacha20poly1305-sphincs256s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece8192128-chacha20poly1305-sphincs256s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece8192128-chacha20poly1305-sphincs256s} \\
+NIST Level & L5 \\
+KEM & CMcE-8192128 \\
+Signature & SPX-256s \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1880.86 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 4.553 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 13.643 ms \\
+Primitive Total & 18.196 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,357,824 bytes (1326.0 KB) \\
+Ciphertext & 208 bytes \\
+Signature & 29,792 bytes (29.09 KB) \\
+Total Artifacts & 1,387,824 bytes (1355.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (1355 KB) may impact bandwidth-constrained links. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 69: CMcE-460896 + SPX-192s}
+\label{suite:cs-classicmceliece460896-chacha20poly1305-sphincs192s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece460896-chacha20poly1305-sphincs192s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece460896-chacha20poly1305-sphincs192s} \\
+NIST Level & L3 \\
+KEM & CMcE-460896 \\
+Signature & SPX-192s \\
+AEAD & ChaCha20-Poly1305 \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 1978.84 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 1.238 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 9.147 ms \\
+Primitive Total & 10.385 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 524,160 bytes (511.9 KB) \\
+Ciphertext & 156 bytes \\
+Signature & 16,224 bytes (15.84 KB) \\
+Total Artifacts & 540,540 bytes (527.9 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (528 KB) may impact bandwidth-constrained links. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 70: CMcE-460896 + SPX-192s}
+\label{suite:cs-classicmceliece460896-ascon128a-sphincs192s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece460896-ascon128a-sphincs192s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece460896-ascon128a-sphincs192s} \\
+NIST Level & L3 \\
+KEM & CMcE-460896 \\
+Signature & SPX-192s \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 2189.15 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 1.431 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 7.515 ms \\
+Primitive Total & 8.946 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 524,160 bytes (511.9 KB) \\
+Ciphertext & 156 bytes \\
+Signature & 16,224 bytes (15.84 KB) \\
+Total Artifacts & 540,540 bytes (527.9 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (528 KB) may impact bandwidth-constrained links. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+\newpage
+\subsection{Suite 71: CMcE-8192128 + SPX-256s}
+\label{suite:cs-classicmceliece8192128-ascon128a-sphincs256s}
+
+\begin{table}[H]
+\centering
+\caption{Metrics for cs-classicmceliece8192128-ascon128a-sphincs256s}
+\begin{tabular}{l r}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+\multicolumn{2}{l}{\textit{Identity}} \\
+Suite ID & \texttt{cs-classicmceliece8192128-ascon128a-sphincs256s} \\
+NIST Level & L5 \\
+KEM & CMcE-8192128 \\
+Signature & SPX-256s \\
+AEAD & ASCON-128a \\
+\midrule
+\multicolumn{2}{l}{\textit{Handshake Timing}} \\
+Total Handshake & 2517.53 ms \\
+KEM Keygen & 0.000 ms \\
+KEM Encapsulate & 3.235 ms \\
+KEM Decapsulate & 0.000 ms \\
+Signature Sign & 0.000 ms \\
+Signature Verify & 12.218 ms \\
+Primitive Total & 15.453 ms \\
+\midrule
+\multicolumn{2}{l}{\textit{Artifact Sizes}} \\
+Public Key & 1,357,824 bytes (1326.0 KB) \\
+Ciphertext & 208 bytes \\
+Signature & 29,792 bytes (29.09 KB) \\
+Total Artifacts & 1,387,824 bytes (1355.3 KB) \\
+\midrule
+\multicolumn{2}{l}{\textit{Status}} \\
+Success & Yes \\
+ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} This suite exhibits \textbf{slow} performance, primarily due to signature verification overhead. The large artifact size (1355 KB) may impact bandwidth-constrained links. SPHINCS+ provides hash-based security guarantees but with significant computational cost. 
+%==============================================================================
+\appendix
+\section{Complete Results Table}
+%==============================================================================
+
+\begin{longtable}{l l l r r r}
+\caption{Complete Benchmark Results} \\
+\toprule
+\textbf{Suite ID} & \textbf{KEM} & \textbf{Sig} & \textbf{Time (ms)} & \textbf{Size (KB)} & \textbf{Level} \\
+\midrule
+\endfirsthead
+\multicolumn{6}{c}{\tablename\ \thetable{} -- continued} \\
+\toprule
+\textbf{Suite ID} & \textbf{KEM} & \textbf{Sig} & \textbf{Time (ms)} & \textbf{Size (KB)} & \textbf{Level} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{6}{r}{Continued on next page...} \\
+\endfoot
+\bottomrule
+\endlastfoot
+cs-mlkem512-ascon128a-fal & ML-KEM-512 & Falcon-512 & 10.7 & 2.2 & L1 \\
+cs-mlkem512-ascon128a-mld & ML-KEM-512 & ML-DSA-44 & 12.3 & 3.9 & L1 \\
+cs-mlkem512-chacha20poly1 & ML-KEM-512 & ML-DSA-44 & 12.4 & 3.9 & L1 \\
+cs-mlkem1024-chacha20poly & ML-KEM-1024 & ML-DSA-87 & 13.5 & 7.6 & L5 \\
+cs-mlkem512-aesgcm-falcon & ML-KEM-512 & Falcon-512 & 14.6 & 2.2 & L1 \\
+cs-mlkem1024-aesgcm-mldsa & ML-KEM-1024 & ML-DSA-87 & 14.6 & 7.6 & L5 \\
+cs-mlkem768-ascon128a-mld & ML-KEM-768 & ML-DSA-65 & 14.7 & 5.5 & L3 \\
+cs-mlkem1024-chacha20poly & ML-KEM-1024 & Falcon-102 & 15.1 & 4.3 & L5 \\
+cs-mlkem768-chacha20poly1 & ML-KEM-768 & ML-DSA-65 & 15.7 & 5.5 & L3 \\
+cs-mlkem512-chacha20poly1 & ML-KEM-512 & Falcon-512 & 17.1 & 2.2 & L1 \\
+cs-mlkem1024-ascon128a-ml & ML-KEM-1024 & ML-DSA-87 & 18.0 & 7.6 & L5 \\
+cs-mlkem512-aesgcm-mldsa4 & ML-KEM-512 & ML-DSA-44 & 19.0 & 3.9 & L1 \\
+cs-mlkem768-aesgcm-mldsa6 & ML-KEM-768 & ML-DSA-65 & 19.5 & 5.5 & L3 \\
+cs-mlkem1024-aesgcm-falco & ML-KEM-1024 & Falcon-102 & 21.4 & 4.3 & L5 \\
+cs-mlkem1024-ascon128a-fa & ML-KEM-1024 & Falcon-102 & 28.3 & 4.3 & L5 \\
+cs-hqc128-aesgcm-mldsa44 & HQC-128 & ML-DSA-44 & 61.2 & 8.9 & L1 \\
+cs-hqc128-chacha20poly130 & HQC-128 & Falcon-512 & 61.7 & 7.2 & L1 \\
+cs-hqc128-chacha20poly130 & HQC-128 & ML-DSA-44 & 62.2 & 8.9 & L1 \\
+cs-hqc128-ascon128a-mldsa & HQC-128 & ML-DSA-44 & 63.3 & 8.9 & L1 \\
+cs-hqc128-aesgcm-falcon51 & HQC-128 & Falcon-512 & 71.7 & 7.2 & L1 \\
+cs-hqc128-ascon128a-falco & HQC-128 & Falcon-512 & 73.6 & 7.2 & L1 \\
+cs-classicmceliece348864- & CMcE-348864 & ML-DSA-44 & 128.8 & 257.5 & L1 \\
+cs-classicmceliece348864- & CMcE-348864 & Falcon-512 & 137.5 & 255.7 & L1 \\
+cs-hqc192-aesgcm-mldsa65 & HQC-192 & ML-DSA-65 & 164.5 & 16.4 & L3 \\
+cs-hqc192-ascon128a-mldsa & HQC-192 & ML-DSA-65 & 166.1 & 16.4 & L3 \\
+cs-classicmceliece348864- & CMcE-348864 & Falcon-512 & 166.7 & 255.7 & L1 \\
+cs-hqc192-chacha20poly130 & HQC-192 & ML-DSA-65 & 216.7 & 16.4 & L3 \\
+cs-classicmceliece348864- & CMcE-348864 & Falcon-512 & 232.6 & 255.7 & L1 \\
+cs-classicmceliece460896- & CMcE-460896 & ML-DSA-65 & 249.3 & 515.3 & L3 \\
+cs-classicmceliece348864- & CMcE-348864 & ML-DSA-44 & 270.9 & 257.5 & L1 \\
+cs-hqc256-ascon128a-falco & HQC-256 & Falcon-102 & 279.6 & 22.4 & L5 \\
+cs-hqc256-ascon128a-mldsa & HQC-256 & ML-DSA-87 & 280.2 & 25.7 & L5 \\
+cs-hqc256-chacha20poly130 & HQC-256 & Falcon-102 & 282.4 & 22.4 & L5 \\
+cs-hqc256-aesgcm-mldsa87 & HQC-256 & ML-DSA-87 & 282.7 & 25.7 & L5 \\
+cs-hqc256-chacha20poly130 & HQC-256 & ML-DSA-87 & 285.5 & 25.7 & L5 \\
+cs-classicmceliece460896- & CMcE-460896 & ML-DSA-65 & 287.5 & 515.3 & L3 \\
+cs-hqc256-aesgcm-falcon10 & HQC-256 & Falcon-102 & 292.8 & 22.4 & L5 \\
+cs-classicmceliece348864- & CMcE-348864 & ML-DSA-44 & 367.4 & 257.5 & L1 \\
+cs-classicmceliece8192128 & CMcE-8192128 & Falcon-102 & 712.7 & 1327.5 & L5 \\
+cs-mlkem512-chacha20poly1 & ML-KEM-512 & SPX-128s & 829.2 & 9.2 & L1 \\
+cs-mlkem512-aesgcm-sphinc & ML-KEM-512 & SPX-128s & 869.3 & 9.2 & L1 \\
+cs-hqc128-aesgcm-sphincs1 & HQC-128 & SPX-128s & 869.5 & 14.2 & L1 \\
+cs-hqc128-ascon128a-sphin & HQC-128 & SPX-128s & 927.2 & 14.2 & L1 \\
+cs-mlkem512-ascon128a-sph & ML-KEM-512 & SPX-128s & 985.2 & 9.2 & L1 \\
+cs-classicmceliece348864- & CMcE-348864 & SPX-128s & 1017.4 & 262.8 & L1 \\
+cs-classicmceliece348864- & CMcE-348864 & SPX-128s & 1036.3 & 262.8 & L1 \\
+cs-hqc128-chacha20poly130 & HQC-128 & SPX-128s & 1147.5 & 14.2 & L1 \\
+cs-classicmceliece8192128 & CMcE-8192128 & Falcon-102 & 1149.1 & 1327.4 & L5 \\
+cs-classicmceliece460896- & CMcE-460896 & ML-DSA-65 & 1161.0 & 515.3 & L3 \\
+cs-classicmceliece348864- & CMcE-348864 & SPX-128s & 1198.7 & 262.8 & L1 \\
+cs-mlkem1024-aesgcm-sphin & ML-KEM-1024 & SPX-256s & 1227.4 & 32.2 & L5 \\
+cs-classicmceliece8192128 & CMcE-8192128 & Falcon-102 & 1248.2 & 1327.4 & L5 \\
+cs-mlkem1024-ascon128a-sp & ML-KEM-1024 & SPX-256s & 1250.7 & 32.2 & L5 \\
+cs-mlkem1024-chacha20poly & ML-KEM-1024 & SPX-256s & 1255.6 & 32.2 & L5 \\
+cs-classicmceliece8192128 & CMcE-8192128 & ML-DSA-87 & 1268.1 & 1330.7 & L5 \\
+cs-mlkem768-aesgcm-sphinc & ML-KEM-768 & SPX-192s & 1348.8 & 18.1 & L3 \\
+cs-classicmceliece8192128 & CMcE-8192128 & ML-DSA-87 & 1354.0 & 1330.7 & L5 \\
+cs-mlkem768-ascon128a-sph & ML-KEM-768 & SPX-192s & 1463.9 & 18.1 & L3 \\
+cs-hqc256-aesgcm-sphincs2 & HQC-256 & SPX-256s & 1527.7 & 50.3 & L5 \\
+cs-hqc192-ascon128a-sphin & HQC-192 & SPX-192s & 1540.4 & 29.0 & L3 \\
+cs-hqc192-aesgcm-sphincs1 & HQC-192 & SPX-192s & 1586.2 & 29.0 & L3 \\
+cs-hqc256-chacha20poly130 & HQC-256 & SPX-256s & 1607.0 & 50.3 & L5 \\
+cs-mlkem768-chacha20poly1 & ML-KEM-768 & SPX-192s & 1641.9 & 18.1 & L3 \\
+cs-classicmceliece8192128 & CMcE-8192128 & ML-DSA-87 & 1650.9 & 1330.7 & L5 \\
+cs-hqc256-ascon128a-sphin & HQC-256 & SPX-256s & 1653.9 & 50.3 & L5 \\
+cs-hqc192-chacha20poly130 & HQC-192 & SPX-192s & 1704.1 & 29.0 & L3 \\
+cs-classicmceliece8192128 & CMcE-8192128 & SPX-256s & 1776.6 & 1355.3 & L5 \\
+cs-classicmceliece8192128 & CMcE-8192128 & SPX-256s & 1880.9 & 1355.3 & L5 \\
+cs-classicmceliece460896- & CMcE-460896 & SPX-192s & 1978.8 & 527.9 & L3 \\
+cs-classicmceliece460896- & CMcE-460896 & SPX-192s & 2189.2 & 527.9 & L3 \\
+cs-classicmceliece8192128 & CMcE-8192128 & SPX-256s & 2517.5 & 1355.3 & L5 \\
+
+\end{longtable}
+
+\section{Methodology}
+
+\subsection{Test Environment}
+\begin{itemize}
+    \item \textbf{Drone:} Raspberry Pi 4 Model B (1.5 GHz ARM Cortex-A72, 4GB RAM)
+    \item \textbf{GCS:} Windows 10 (Intel Core i7, 16GB RAM)
+    \item \textbf{Network:} 192.168.0.x LAN (WiFi, ~2ms RTT)
+    \item \textbf{Library:} liboqs (Open Quantum Safe) via Python bindings
+\end{itemize}
+
+\subsection{Measurement Protocol}
+\begin{enumerate}
+    \item Suite activated via TCP control channel
+    \item Full PQC handshake executed (KEM + Signature)
+    \item Metrics captured from status file
+    \item 10-second data plane operation
+    \item Suite cycled to next in sequence
+\end{enumerate}
+
+\subsection{Metrics Captured}
+\begin{itemize}
+    \item Handshake total time (perf\_counter\_ns)
+    \item KEM primitive timings (keygen, encapsulate, decapsulate)
+    \item Signature primitive timings (sign, verify)
+    \item Artifact sizes (public key, ciphertext, signature)
+\end{itemize}
+
+\end{document}

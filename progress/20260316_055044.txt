@@ -1,0 +1,961 @@
+Secure Tunnel Benchmark Journal
+Timestamp: 2026-03-16 05:50:44 IST
+Authoring host: CSG_DRONES
+Repo root: C:\Users\ashis\OneDrive\Desktop\secure-tunnel
+
+Purpose
+This file is the consolidated evidence journal for the recent benchmark-heavy
+passes. The raw benchmark artifacts remain in their original log directories on
+the three participating devices. This document is the single indexed place that
+explains:
+
+1. What was benchmarked.
+2. Which devices and environments were used.
+3. Which code/commit state was active.
+4. Which failures happened.
+5. What fixes were applied.
+6. Which later runs proved the fixes.
+7. What is ready now and what is not yet final paper evidence.
+
+This is a documentation pass only. Raw logs were not copied into progress/.
+They are indexed here by exact path.
+
+======================================================================
+1. Research Context and Scope
+======================================================================
+
+The project goal is a post-quantum secure MAVLink tunnel between:
+
+- GCS side computer
+- drone companion computer (Raspberry Pi 4/5 class system)
+- Pixhawk connected on the drone side
+- MAVProxy on both sides
+
+Current architectural scope covered by this journal:
+
+- core/ secure tunnel foundation
+- sscheduler benchmark orchestration and live benchmark control path
+- GCS to drone and drone to GCS end-to-end tunnel validation
+- localhost validation
+- LAN validation
+- live MAV to MAV smoke validation
+
+Not the scope of this document:
+
+- final adaptive scheduler policy logic for thermal/battery/DDoS response
+- final UI pass
+- paper writing itself
+
+======================================================================
+2. Repository and Commit State
+======================================================================
+
+Local repository state at time of writing:
+
+- Branch: main
+- Status before writing this file: clean, synced with origin/main
+- HEAD before this journal commit: aa28d9a
+
+Recent relevant commit chain:
+
+- aa28d9a fix(bench): resolve canonical suite keys from legacy matrix dirs
+- 2121717 fix(bench): harden mav benchmark timing and suite state
+- 275a974 fix(bench): support headless gcs mavproxy in sgcs bench
+- 26426df feat(mavlink): export live gcs sniff-port observability
+- 8c3409c fix(core): route ascon through explicit backend wrapper
+- 794d2f5 fix(core): avoid ascon backend shadowing across hosts
+- dd70f56 fix(bench): override lan proxy hosts for benchmark peers
+- 6a86fca fix(bench): import aead normalizer in lan drone controller
+- a70d659 fix(bench): treat empty lan psk env as unset
+- 72935b2 Merge remote-tracking branch 'origin/main'
+- 4a410b7 fix(bench): provide benchmark psk to lan proxy processes
+- e726672 update from burak
+
+Meaning of the current code state:
+
+- canonical handshake suite identity is KEM x signature
+- AEAD is a separate runtime axis
+- benchmark harnesses were hardened after multiple live-run failures
+- MAVLink sniff-port observability is now wired into the GCS benchmark path
+
+Important caution:
+Earlier benchmark runs executed against intermediate code states. They are still
+valuable for failure analysis and progress evidence, but only the later runs on
+the hardened revisions should be treated as closer to final evidence.
+
+======================================================================
+3. Device Inventory
+======================================================================
+
+Device A: This PC / primary GCS workstation
+
+- Hostname: CSG_DRONES
+- LAN IP used in bench runs: 192.168.0.106
+- OS: Microsoft Windows NT 10.0.26100.0
+- Python environment command: conda activate oqs-dev
+- Python executable in oqs-dev:
+  C:\Users\ashis\Miniconda3\envs\oqs-dev\python.exe
+- Repo path:
+  C:\Users\ashis\OneDrive\Desktop\secure-tunnel
+- Role in recent runs:
+  - local localhost GCS+drone simulation
+  - live GCS side for Pi smoke
+  - log aggregation and code integration
+
+Environment note on this PC:
+- oqs-python helper enumeration APIs were not available in the installed module
+  during this documentation pass.
+- Historically verified from the benchmark behavior:
+  - HQC is not available in the local build on this machine.
+  - This PC is suitable for ML-KEM / ML-DSA / common AEAD work.
+- There is an existing local liboqs / oqs-python version skew warning in the
+  environment and that should remain tracked as an environment risk.
+
+Device B: Raspberry Pi drone companion computer
+
+- SSH target: dev@100.101.93.23
+- Hostname: uavpi
+- LAN IP: 192.168.0.103
+- Tailscale IP: 100.101.93.23
+- OS:
+  Linux uavpi 6.12.47+rpt-rpi-v8 #1 SMP PREEMPT Debian 1:6.12.47-1+rpt1~bookworm
+  (2025-09-16) aarch64 GNU/Linux
+- Crypto environment command:
+  source ~/cenv/bin/activate
+- Verified Python path read during this pass:
+  /usr/bin/python3.11
+- Benchmark worktree used for live runs:
+  /home/dev/secure-tunnel-bench-main
+- Git HEAD in that benchmark worktree during this pass:
+  aa28d9ac
+- Role in recent runs:
+  - drone endpoint
+  - Pi-side power measurements
+  - live MAVProxy to Pixhawk side
+
+Detailed Pi runtime environment verified after the first journal draft:
+
+- cenv activation command:
+  source ~/cenv/bin/activate
+- cenv Python version:
+  Python 3.11.2
+- cenv Python executable:
+  /home/dev/cenv/bin/python
+- MAVProxy executable on Pi:
+  /home/dev/.local/bin/mavproxy.py
+- Perf tool:
+  /usr/bin/perf
+- Pixhawk serial device observed during this pass:
+  /dev/ttyACM0
+- INA219 / I2C bus node observed during this pass:
+  /dev/i2c-1
+
+Pi repository/worktree layout used in the recent benchmark cycle:
+
+- primary repo:
+  /home/dev/secure-tunnel
+- benchmark worktree:
+  /home/dev/secure-tunnel-bench-main
+- additional synced worktree seen on device:
+  /home/dev/secure-tunnel-main-latest
+
+Pi primitive benchmark environment evidence:
+
+- /home/dev/secure-tunnel/logs/bench_validate_pi/environment.json
+- /home/dev/secure-tunnel/logs/bench_validate_pi_power/environment.json
+
+Recorded Pi primitive benchmark environment values:
+
+- hostname: uavpi
+- kernel_version: 6.12.47+rpt-rpi-v8
+- python_version: 3.11.2
+- git_commit at that collection time: cde3e8f7b937bea64064ebed06487972522c588c
+- git_branch: main
+
+Recorded Pi primitive benchmark scope:
+
+- KEM summary entries: 27
+  This corresponds to 9 KEMs x 3 operations.
+- Signature summary entries: 24
+  This corresponds to 8 signatures x 3 operations.
+- AEAD summary entries: 32
+- Suite summary entries: 24
+
+Unique KEM algorithms seen in Pi primitive benchmark summaries:
+
+- Classic-McEliece-348864
+- Classic-McEliece-460896
+- Classic-McEliece-8192128
+- HQC-128
+- HQC-192
+- HQC-256
+- ML-KEM-512
+- ML-KEM-768
+- ML-KEM-1024
+
+Unique signature algorithms seen in Pi primitive benchmark summaries:
+
+- Falcon-512
+- Falcon-1024
+- ML-DSA-44
+- ML-DSA-65
+- ML-DSA-87
+- SPHINCS+-SHA2-128s-simple
+- SPHINCS+-SHA2-192s-simple
+- SPHINCS+-SHA2-256s-simple
+
+Unique AEAD algorithms seen in Pi primitive benchmark summaries at that stage:
+
+- AES-256-GCM
+- AES-256-CCM
+- Ascon-AEAD128
+- ChaCha20-Poly1305
+
+Important distinction between "implemented latest registry" and "what that Pi
+primitive benchmark pass exercised":
+
+- latest registry on current codebase:
+  - 24 benchmark suite ids
+  - 3 scheduler-approved runtime suites
+  - approved AEAD profiles by level:
+    - L1: aesgcm128, aesccm128, ascon128
+    - L3: aesgcm192, aesccm192
+    - L5: aesgcm256, aesccm256, chacha20poly1305
+- benchmark-only/non-operational tokens still present in code for research and
+  comparison:
+  - ascon128a
+  - aegis256
+
+Why this matters:
+
+- The drone environment is not just a generic Linux box.
+- It is the actual companion-computer side with:
+  - live Pixhawk serial path
+  - live MAVProxy
+  - live I2C power-monitor path
+  - live perf tool
+  - cenv crypto runtime
+  - HQC-visible primitive benchmark history on the device
+
+Device C: Burak clean benchmark workstation
+
+- SSH target: burak@192.168.0.100
+- Hostname: LAPPY
+- LAN IP used as GCS in cross-host matrix: 192.168.0.100
+- Intended environment command:
+  conda activate oqs-dev
+- Clean benchmark repo path:
+  C:\Users\burak\Desktop\march-2026\secure-tunnel
+- Verified branch in that clean repo during this pass:
+  main
+- Verified HEAD in that clean repo during this pass:
+  8c3409c4
+- Role in recent runs:
+  - HQC-capable / fuller GCS benchmark host
+  - full Burak to Pi LAN matrix collection
+
+Important branch management note:
+- Burak also has an older separate main1 development state preserved elsewhere.
+- That in-progress state was intentionally not collapsed into the clean main
+  benchmark checkout.
+- The clean benchmark path above is the one to use for repeatable benchmark work.
+
+======================================================================
+4. Log and Artifact Roots
+======================================================================
+
+Local host artifact roots:
+
+- C:\Users\ashis\OneDrive\Desktop\secure-tunnel\logs\bench_validate_pc
+- C:\Users\ashis\OneDrive\Desktop\secure-tunnel\logs\localhost_validate_pc
+- C:\Users\ashis\OneDrive\Desktop\secure-tunnel\logs\lan_benchmark
+- C:\Users\ashis\OneDrive\Desktop\secure-tunnel\logs\benchmarks
+- C:\Users\ashis\OneDrive\Desktop\secure-tunnel\logs\mavmav
+- C:\Users\ashis\OneDrive\Desktop\secure-tunnel\logs\gcs_status.json
+
+Pi artifact roots:
+
+- /home/dev/secure-tunnel-bench-main/logs/lan_benchmark
+- /home/dev/secure-tunnel-bench-main/logs/benchmarks
+- /home/dev/secure-tunnel/logs/bench_validate_pi
+- /home/dev/secure-tunnel/logs/bench_validate_pi_power
+- /home/dev/secure-tunnel/logs/localhost_validate_pi
+
+Specific Pi LAN matrix artifact directory observed in this pass:
+
+- /home/dev/secure-tunnel-bench-main/logs/lan_benchmark/burak_pi_full66_8c3409c
+
+Specific local live benchmark artifact directories of interest:
+
+- logs/benchmarks/live_run_20260315_233328
+- logs/benchmarks/live_run_20260315_235706
+- logs/benchmarks/live_run_20260316_000231
+
+======================================================================
+5. Benchmark Stages Covered by This Journal
+======================================================================
+
+This journal ties together four major recent benchmark stages:
+
+Stage 1. Primitive and localhost readiness
+Stage 2. Burak to Pi full 66-combination LAN matrix
+Stage 3. First live MAV to MAV smoke that exposed benchmark harness flaws
+Stage 4. Corrected live MAV to MAV smoke after benchmark hardening
+
+The runs below are ordered by engineering importance, not by absolute timestamp.
+
+======================================================================
+6. Stage 1 - Primitive and Localhost Readiness
+======================================================================
+
+6.1 Local primitive benchmark evidence on this PC
+
+Artifact root:
+- logs/bench_validate_pc
+
+Environment file:
+- logs/bench_validate_pc/environment.json
+
+Key recorded environment values:
+- hostname: CSG_DRONES
+- git_commit at collection time: cde3e8f7b937bea64064ebed06487972522c588c
+- git_branch: main
+- git_clean: false
+- timestamp_iso: 2026-03-15T12:48:29.279307Z
+
+Summary files present:
+- logs/bench_validate_pc/summary/kem_summary.json
+- logs/bench_validate_pc/summary/sig_summary.json
+- logs/bench_validate_pc/summary/aead_summary.json
+- logs/bench_validate_pc/summary/suites_summary.json
+
+Observed scope from summary files:
+- KEM summary entries: 18
+  This corresponds to 6 KEMs x 3 operations.
+- Signature summary entries: 24
+  This corresponds to 8 signature algorithms x 3 operations.
+- AEAD summary entries: 24
+  This corresponds to multiple payload/operation samples over the common AEAD set.
+- Suite summary entries: 16
+  This corresponds to the cross-host compatible suite set used on this PC.
+
+Interpretation:
+- This PC was successfully used for primitive benchmarking.
+- It did not represent the full HQC-capable space.
+- It was enough for local harness validation and later Pi smoke coordination.
+
+6.2 Local localhost tunnel validation on this PC
+
+Artifact root:
+- logs/localhost_validate_pc
+
+Examples:
+- logs/localhost_validate_pc/cs_mlkem768_mldsa65__aesgcm_gcs_final.json
+- logs/localhost_validate_pc/cs_mlkem768_mldsa65__aesccm_gcs_final.json
+- logs/localhost_validate_pc/cs_mlkem768_mldsa65__chacha20poly1305_gcs_final.json
+
+Representative recorded values from
+logs/localhost_validate_pc/cs_mlkem768_mldsa65__aesgcm_gcs_final.json:
+
+- role: gcs
+- suite: cs-mlkem768-mldsa65
+- drops: 0
+- drop_replay: 0
+- drop_auth: 0
+- drop_header: 0
+- drop_session_epoch: 0
+- handshake_total_ns: 26850300
+- derived handshake total: 26.8503 ms
+- psk_bound_kdf: true
+- key_confirmation: hmac-sha256
+
+Interpretation:
+- localhost encrypted flow was functioning
+- handshake artifacts and counters were visible
+- replay/auth/header/session-epoch drop counters remained at zero in the sample
+
+Important later correction:
+At a later review, it was recognized that some earlier AEAD-facing benchmark
+paths still reflected flattened AEAD naming rather than the intended final
+8-profile level-specific AEAD model. That does not erase localhost readiness,
+but it means older flattened AEAD summary claims must not be used as final
+paper tables without rerunning on the corrected model.
+
+======================================================================
+7. Stage 2 - Burak to Pi Full 66-Combination LAN Matrix
+======================================================================
+
+Primary artifact:
+- /home/dev/secure-tunnel-bench-main/logs/lan_benchmark/burak_pi_full66_8c3409c/benchmark_results_burak_pi_full66_8c3409c.json
+
+Recorded metadata from that artifact:
+- run_id: burak_pi_full66_8c3409c
+- timestamp: 2026-03-15T21:24:24.825236+00:00
+- gcs_lan_ip: 192.168.0.100
+- drone_lan_ip: 192.168.0.103
+- traffic_duration_s: 10.0
+- total_suites: 66
+- successful_suites: 66
+- failed_suites: 0
+
+Aggregate values recomputed directly from the JSON results array:
+
+- avg_handshake_ms: 4081.216
+- avg_rtt_ms: 14.261
+- avg_p95_rtt_ms: 69.929
+- avg_pi_power_w: 3.427
+
+Interpretation of the 4081 ms figure:
+- This number was never pure cryptographic handshake cost.
+- It included activation overhead, process startup, and benchmark dwell behavior.
+- This became critical later because it initially looked like an abnormal PQC
+  handshake cost when it was really a benchmark timing/modeling issue.
+
+Representative entry excerpt from the JSON:
+
+- suite_id: cs-classicmceliece348864-falcon512
+- aead_algorithm: aesgcm128
+- nist_level: L1
+- handshake_duration_ms: 4024.120234
+- gcs_rtt_mean_ms: 6.395
+- drone_power_avg_w: 3.4275675196002062
+- packets_sent: 200
+- packets_received: 200
+
+Why this stage mattered:
+- It proved cross-host tunnel viability at scale before the live MAV smoke pass.
+- It exposed that suite activation timing and benchmark harness accounting
+  needed clearer separation from actual crypto timing.
+- It provided an early end-to-end LAN evidence base between a richer GCS host
+  and the Pi drone node.
+
+======================================================================
+8. Stage 3 - First Live MAV to MAV Smoke That Exposed Benchmark Flaws
+======================================================================
+
+Primary local artifact:
+- logs/benchmarks/live_run_20260315_233328/suite_cs-mlkem512-mldsa44_gcs.json
+
+Related local console logs:
+- logs/gcs-20260315-233331.log
+- logs/gcs-20260315-233431.log
+
+What the GCS suite artifact recorded:
+
+- run_id: 20260315_233328
+- role: gcs
+- suite_id: cs-mlkem512-mldsa44
+- success: true
+- error: ""
+- elapsed_s: 7.563...
+- sync_status.clock_offset_ms: 0.0
+- sync_status.sync_count: 0
+- metrics.mavlink.total_msgs_received: 0
+- metrics.latency.one_way_latency_valid: false
+- metrics.latency.latency_invalid_reason: missing_system_time_reference
+- metrics.mavlink_observability.link_status.state: idle
+- metrics.mavlink_observability.link_status.stream_active: false
+- metrics.mavlink_observability.link_status.heartbeat_present: false
+
+Why this run was important:
+- It looked successful at first glance.
+- It was not actually a valid success from a MAVLink data-flow standpoint.
+- The benchmark harness had allowed a false-positive success artifact even though:
+  - no telemetry packets were observed
+  - link was idle
+  - heartbeat was absent
+  - latency had no valid basis
+
+Root problems identified from this run and neighboring failures:
+
+1. False success artifact generation
+   The GCS side could write success=true even when suite activation or traffic
+   readiness had not really succeeded.
+
+2. Apparent 4-second handshake inflation
+   The reported "handshake" timing mixed together:
+   - crypto handshake
+   - proxy startup
+   - suite activation warmup
+   - dwell behavior
+
+3. Chronos sync accounting corruption on the drone side
+   Clock sync data was being double-recorded, inflating sync_count and making
+   timing interpretation worse.
+
+4. Canonical suite ids vs legacy matrix key directories
+   The runtime had moved toward canonical cs-{kem}-{sig} ids, while benchmark
+   key-material directory resolution still needed compatibility handling.
+
+Engineering conclusion from this stage:
+- The live MAV path was giving useful signals, but the benchmark harness itself
+  needed hardening before any of these results could be treated as reliable.
+
+======================================================================
+9. Stage 4 - Failure-Only Verification After Harness Hardening
+======================================================================
+
+Primary artifact:
+- logs/benchmarks/live_run_20260315_235706/suite_cs-mlkem512-mldsa44_gcs.json
+
+Recorded values:
+
+- run_id: 20260315_235706
+- success: false
+- error: proxy_start_failed
+- elapsed_s: 2.6719999999913853
+- sync_status.clock_offset_ms: 154.82962131500244
+- sync_status.clock_sync_method: chronos
+- sync_status.sync_count: 1
+
+Why this run mattered:
+- It was not a benchmark win.
+- It was a benchmark harness correctness win.
+- After the hardening changes, the system stopped lying.
+- Instead of emitting another fake success artifact, it emitted a clean failure
+  artifact with an explicit error reason.
+
+This run is evidence that the benchmark control logic started behaving correctly
+even in failure scenarios.
+
+======================================================================
+10. Stage 5 - Successful Corrected Live MAV to MAV Smoke
+======================================================================
+
+Primary local GCS artifact:
+- logs/benchmarks/live_run_20260316_000231/suite_cs-mlkem512-mldsa44_gcs.json
+
+Primary Pi summary artifact:
+- /home/dev/secure-tunnel-bench-main/logs/benchmarks/live_run_20260316_000231/benchmark_summary_20260316_000231.json
+
+What the Pi summary recorded:
+
+- run_id: 20260316_000231
+- completed_count: 1
+- benchmark_complete: true
+- stats.successful_count: 1
+- stats.failed_count: 0
+- stats.handshake_min_ms: 22.820505
+- stats.handshake_max_ms: 22.820505
+- stats.handshake_avg_ms: 22.820505
+
+What the local GCS suite artifact recorded:
+
+- success: true
+- error: ""
+- elapsed_s: 9.547...
+- sync_status.clock_offset_ms: 141.77274703979492
+- sync_status.sync_count: 2
+- metrics.mavlink.total_msgs_received: 2036
+- metrics.latency.one_way_latency_avg_ms: 119.06
+- metrics.latency.one_way_latency_p95_ms: 124.72
+- metrics.latency.one_way_latency_valid: true
+- metrics.mavlink_observability.link_status.stream_active: true
+- metrics.mavlink_observability.link_status.heartbeat_present: true
+- metrics.mavlink_observability.link_status.state: degraded
+- metrics.mavlink_observability.link_status.degraded_reasons:
+  - sequence_gaps
+  - duplicates
+- metrics.mavlink_observability.flight_controller.fc_mode: MANUAL
+- metrics.mavlink_observability.flight_controller.fc_attitude_update_rate_hz: 50.24
+
+Console-level interpretation from the successful smoke:
+
+- Chronos sync reached a usable state:
+  - median-of-3 offset reported around 141.77 ms
+  - best sync RTT around 2.17 ms
+- Actual cryptographic handshake was fast:
+  - approximately 22.8 ms
+- The extra wall time before dwell came from suite activation warmup:
+  - about 5040.5 ms in the observed smoke
+- Data plane counters on the drone side showed real traffic flow
+- GCS sniff-port collection saw real MAVLink packets and heartbeat
+
+This is the key correction:
+
+- The "4 second handshake" concern was not caused by the PQC handshake itself.
+- The crypto handshake was roughly 22.8 ms in the corrected live smoke.
+- The large extra time came from process bring-up and activation readiness.
+
+10.1 Explicit end-to-end proof for both directions
+
+This section answers the strict question "was end to end drone to GCS included?"
+The answer is yes, and the proof is in the drone-side and GCS-side artifacts.
+
+Proof source 1:
+- /home/dev/secure-tunnel-bench-main/logs/benchmarks/live_run_20260316_000231/suite_cs-mlkem512-mldsa44_drone.json
+
+Proof source 2:
+- /home/dev/secure-tunnel-bench-main/logs/benchmarks/live_run_20260316_000231/drone_status.json
+
+Proof source 3:
+- logs/benchmarks/live_run_20260316_000231/suite_cs-mlkem512-mldsa44_gcs.json
+
+The drone-side suite artifact recorded:
+
+- metrics.handshake.handshake_ms: 22.820505
+- metrics.data_plane.ptx_in: 2385
+- metrics.data_plane.ptx_out: 25
+- metrics.data_plane.enc_in: 25
+- metrics.data_plane.enc_out: 2385
+
+Meaning of those counters in the corrected live smoke:
+
+- enc_in = 25
+  The drone received encrypted traffic from GCS.
+- ptx_out = 25
+  The drone decrypted and delivered those packets locally on the drone side.
+- ptx_in = 2385
+  The drone collected plaintext traffic from its local MAV side / companion side.
+- enc_out = 2385
+  The drone encrypted and sent that traffic back toward the GCS.
+
+The later drone_status snapshot recorded even larger sustained counts:
+
+- ptx_in: 2750
+- ptx_out: 25
+- enc_in: 25
+- enc_out: 2750
+
+Why the status snapshot is larger than the suite summary:
+- the status snapshot was taken later in the same live run window
+- it reflects that the encrypted return flow from the drone kept progressing
+
+GCS-side proof that the return leg really arrived and was observable:
+
+- total_msgs_received: 2036
+- one_way_latency_avg_ms: 119.06
+- one_way_latency_p95_ms: 124.72
+- link_status.stream_active: true
+- link_status.heartbeat_present: true
+- top_message_types included:
+  - ATTITUDE
+  - ATTITUDE_QUATERNION
+  - HIGHRES_IMU
+  - ODOMETRY
+  - ACTUATOR_CONTROL_TARGET
+  - SCALED_IMU
+  - SERVO_OUTPUT_RAW
+  - VFR_HUD
+
+That is the actual end-to-end path in plain sequence:
+
+1. GCS side plaintext / control / traffic enters the GCS secure tunnel.
+2. GCS encrypts and transmits to the drone.
+3. Drone receives encrypted packets.
+4. Drone decrypts and delivers them on the local drone side.
+5. Drone local MAV/Pixhawk side continues producing telemetry.
+6. Drone secure tunnel encrypts that outbound plaintext telemetry.
+7. GCS receives and decrypts the returning encrypted telemetry.
+8. GCS sniff-port collector and pymavlink observer confirm the recovered live
+   MAVLink stream, heartbeat, message types, and latency.
+
+So this was not a one-way encrypt-only proof. The corrected smoke included the
+return telemetry leg and the GCS-side recovery/observation of that return leg.
+
+10.2 Drone process understanding during the successful smoke
+
+Operational process on the drone side in this pass:
+
+1. SSH into the Pi using:
+   ssh dev@100.101.93.23
+2. Export benchmark/GCS addressing variables.
+3. Activate cenv:
+   source ~/cenv/bin/activate
+4. Enter the benchmark worktree:
+   cd ~/secure-tunnel-bench-main
+5. Start the drone benchmark controller:
+   python -m sscheduler.sdrone_bench --mode MAVPROXY --mav-master /dev/ttyACM0 ...
+6. Drone benchmark path brings up the secure tunnel runtime.
+7. MAVProxy on the drone side is attached to the live Pixhawk through
+   /dev/ttyACM0.
+8. The drone participates in Chronos time sync, control-plane suite activation,
+   and the PQC handshake.
+9. After activation warmup, the drone runs the AEAD data plane continuously and
+   forwards live telemetry toward the GCS.
+10. The Pi can also expose power data through the INA219 path on /dev/i2c-1 and
+    system timing via /usr/bin/perf for dedicated power/perf campaigns.
+
+Observed drone cryptographic details in the successful live smoke:
+
+- suite_id: cs-mlkem512-mldsa44
+- KEM: ML-KEM-512
+- signature: ML-DSA-44
+- AEAD token: aesgcm128
+- pub_key_size_bytes: 800
+- ciphertext_size_bytes: 768
+- sig_size_bytes: 2420
+- shared_secret_size_bytes: 32
+- psk_bound_kdf: true
+- key_confirmation: hmac-sha256
+- handshake_total_ns: 22820505
+- drone-side kem_encaps_ms: 0.245554
+- drone-side sig_verify_ms: 0.720516
+- drone-side aead_encrypt_avg_ms: 0.074626
+- drone-side aead_decrypt_avg_ms: 0.117102
+
+One subtle but important environment observation:
+
+- the drone artifact reported the GCS metrics export field python_env_gcs as
+  "base", while the GCS benchmark server was started using the oqs-dev Python
+  executable. That indicates the metrics export field is not a reliable source
+  of truth for the exact conda env name and should not be used as final paper
+  evidence for environment provenance.
+
+======================================================================
+11. Problems Faced and How They Were Overcome
+======================================================================
+
+Problem A: False success artifacts in live benchmark runs
+
+Symptom:
+- GCS suite JSON could say success=true even when there was no real telemetry flow.
+
+Fix direction:
+- benchmark state handling was tightened
+- failure conditions now write explicit failure artifacts
+
+Relevant commits:
+- 2121717 fix(bench): harden mav benchmark timing and suite state
+
+Evidence:
+- bad state example: live_run_20260315_233328
+- corrected failure artifact: live_run_20260315_235706
+
+Problem B: Inflated "handshake" timing
+
+Symptom:
+- reported ~4 s timings looked cryptographically abnormal
+
+Root cause:
+- suite activation overhead and dwell warmup were mixed into the reported timing
+
+Fix/result:
+- later smoke separated the real handshake cost from activation warmup
+- real handshake shown at 22.820505 ms in the corrected smoke
+
+Problem C: Chronos clock sync double recording
+
+Symptom:
+- sync_count and drift interpretation were unreliable
+
+Fix direction:
+- benchmark synchronization accounting was cleaned up in the drone path
+
+Relevant commits:
+- 2121717 fix(bench): harden mav benchmark timing and suite state
+
+Problem D: Canonical suite ids did not resolve cleanly against old key dirs
+
+Symptom:
+- cs-{kem}-{sig} suite identity did not always match legacy on-disk matrix naming
+
+Fix direction:
+- compatibility resolution was added so the benchmark path could find the
+  correct key material without reverting to older suite modeling
+
+Relevant commit:
+- aa28d9a fix(bench): resolve canonical suite keys from legacy matrix dirs
+
+Problem E: MAVLink observability was too shallow
+
+Symptom:
+- earlier runs had weaker evidence for actual live link quality
+
+Fix direction:
+- GCS sniff-port observability was expanded to export:
+  - live message logging
+  - link state
+  - recent messages
+  - recent STATUSTEXT
+  - FC telemetry summary
+
+Relevant commit:
+- 26426df feat(mavlink): export live gcs sniff-port observability
+
+Problem F: AEAD backend confusion across hosts
+
+Symptom:
+- Ascon/backend selection behavior could differ across machines
+
+Fix direction:
+- moved Ascon usage through an explicit backend wrapper and removed shadow-prone
+  paths
+
+Relevant commits:
+- 794d2f5 fix(core): avoid ascon backend shadowing across hosts
+- 8c3409c fix(core): route ascon through explicit backend wrapper
+
+Problem G: Cross-host benchmark host override bugs
+
+Symptom:
+- LAN runs could inherit the wrong proxy host assumptions
+
+Fix direction:
+- benchmark scripts explicitly inject the real peer LAN hosts and benchmark PSK
+
+Relevant commits:
+- dd70f56 fix(bench): override lan proxy hosts for benchmark peers
+- 4a410b7 fix(bench): provide benchmark psk to lan proxy processes
+- a70d659 fix(bench): treat empty lan psk env as unset
+- 6a86fca fix(bench): import aead normalizer in lan drone controller
+
+======================================================================
+12. Exact Commands Captured in This Workstream
+======================================================================
+
+12.1 GCS live benchmark server start command used on this PC
+
+PowerShell environment used:
+
+- GCS_HOST=192.168.0.106
+- GCS_HOST_LAN=192.168.0.106
+- DRONE_HOST=192.168.0.103
+- DRONE_HOST_LAN=192.168.0.103
+- GCS_CONTROL_HOST=192.168.0.106
+- DRONE_PSK=00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff
+- TUNNEL_HOST_PROFILE=lan
+
+Start pattern used:
+
+Start-Process -FilePath
+  C:\Users\ashis\Miniconda3\envs\oqs-dev\python.exe
+  -ArgumentList
+  '-m','sscheduler.sgcs_bench',
+  '--mode','MAVPROXY',
+  '--no-gui',
+  '--run-id','mavmav_smoke_20260316_fix2'
+  -WorkingDirectory
+  C:\Users\ashis\OneDrive\Desktop\secure-tunnel
+  -WindowStyle Normal
+  -PassThru
+
+12.2 Pi live smoke command
+
+ssh dev@100.101.93.23 "bash -lc '
+  export GCS_HOST=192.168.0.106
+  export GCS_CONTROL_HOST=192.168.0.106
+  export GCS_HOST_LAN=192.168.0.106
+  export DRONE_HOST=192.168.0.103
+  export DRONE_HOST_LAN=192.168.0.103
+  export DRONE_PSK=00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff
+  export TUNNEL_HOST_PROFILE=lan
+  source ~/cenv/bin/activate
+  cd ~/secure-tunnel-bench-main
+  python -m sscheduler.sdrone_bench
+    --mode MAVPROXY
+    --mav-master /dev/ttyACM0
+    --suite-sequence cs-mlkem512-mldsa44
+    --interval 10
+    --gcs-host 192.168.0.106
+'"
+
+12.3 Verification commands used in recent passes
+
+- python -m py_compile sscheduler\sdrone_bench.py sscheduler\sgcs_bench.py
+  tests\test_benchmark_flow_hardening.py
+- python tests\test_benchmark_flow_hardening.py
+- python -m py_compile core\mavlink_collector.py sscheduler\sgcs_bench.py
+  tools\mavlink_live_monitor.py tests\test_mavlink_observability.py
+- $env:PYTHONPATH='.'; python tests\test_mavlink_observability.py
+
+12.4 Device access commands
+
+- ssh dev@100.101.93.23
+- ssh burak@192.168.0.100
+
+======================================================================
+13. What Can Be Claimed Safely Right Now
+======================================================================
+
+Safe claims:
+
+- Cross-host tunnel flow has been demonstrated between GCS and Pi.
+- The Burak to Pi full 66-combination LAN matrix completed successfully.
+- Live MAV to MAV smoke reached real encrypted flow, live heartbeat, and live
+  telemetry visibility after the benchmark hardening fixes.
+- The apparent 4-second "handshake" issue was primarily benchmark activation
+  overhead, not the PQC handshake itself.
+- The corrected live smoke showed a cryptographic handshake time of 22.820505 ms
+  for cs-mlkem512-mldsa44 in that specific setup.
+
+Claims that still need discipline:
+
+- Older flattened-AEAD benchmark outputs must not be mistaken for the final
+  8-profile AEAD paper model without rerunning under the corrected model.
+- Live MAV smoke evidence exists, but a larger supported matrix over the live
+  MAV path should still be rerun after the latest benchmark hardening.
+- The benchmark evidence is strong enough for engineering progress, but final
+  paper tables should always be regenerated from the current frozen revision.
+
+======================================================================
+14. Current Readiness Assessment
+======================================================================
+
+Where the project stands after these runs:
+
+- core/ tunnel foundation: substantially hardened
+- benchmark orchestration: materially improved and now more truthful
+- local primitive benchmarking: working
+- localhost encrypted tunnel validation: working
+- Burak to Pi LAN matrix: working
+- live Pi to this-PC MAV smoke: working on the corrected benchmark path
+
+What is still not "do not touch again" at the paper-evidence level:
+
+- final AEAD-profile-explicit reruns for the 8 intended AEAD profiles
+- larger live MAV matrix reruns on the hardened code
+- final tables regenerated from the latest frozen revision only
+
+======================================================================
+15. Artifact Index
+======================================================================
+
+Primitive benchmark roots:
+
+- logs/bench_validate_pc
+- /home/dev/secure-tunnel/logs/bench_validate_pi
+- /home/dev/secure-tunnel/logs/bench_validate_pi_power
+
+Localhost tunnel validation:
+
+- logs/localhost_validate_pc
+- /home/dev/secure-tunnel/logs/localhost_validate_pi
+
+Cross-host LAN matrix:
+
+- /home/dev/secure-tunnel-bench-main/logs/lan_benchmark/burak_pi_full66_8c3409c/benchmark_results_burak_pi_full66_8c3409c.json
+
+Live benchmark runs of special interest:
+
+- logs/benchmarks/live_run_20260315_233328/suite_cs-mlkem512-mldsa44_gcs.json
+- logs/benchmarks/live_run_20260315_235706/suite_cs-mlkem512-mldsa44_gcs.json
+- logs/benchmarks/live_run_20260316_000231/suite_cs-mlkem512-mldsa44_gcs.json
+- /home/dev/secure-tunnel-bench-main/logs/benchmarks/live_run_20260316_000231/benchmark_summary_20260316_000231.json
+
+Related local GCS logs:
+
+- logs/gcs-20260315-233331.log
+- logs/gcs-20260315-233431.log
+- logs/gcs-20260316-000056.log
+- logs/gcs-20260316-000235.log
+
+======================================================================
+16. Final Engineering Notes
+======================================================================
+
+1. The benchmark harness is now in a better state because it stopped hiding
+   failure behind success-looking JSON.
+
+2. The recent live smoke is important because it proved that after hardening the
+   control and artifact logic, real MAVLink traffic flowed end to end through
+   the secure tunnel with measurable packet and timing data.
+
+3. The Burak clean benchmark checkout and the Pi benchmark checkout should be
+   kept as reproducible benchmark worktrees. The older Burak main1 path should
+   remain separate and not be used for evidence collection.
+
+4. This file should be updated after each major benchmark campaign so the raw
+   logs do not become disconnected from the code/commit history.
+
+End of journal.

@@ -1,0 +1,28 @@
+\begin{table*}[!t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.8pt}
+\caption{Post-Quantum Digital Signature Primitive Performance and Power Overhead on Raspberry Pi~4 (BCM2711 @ 1.8\,GHz, \texttt{performance} governor, 200 iterations, INA219 power monitoring, $P_{\mathrm{idle}}=3309$\,mW).}
+\label{tab:sig-primitives}
+\begin{tabular}{@{}l c r r r r r r r r r@{}}
+\toprule
+ & \textbf{NIST} & \multicolumn{3}{c}{\textbf{Latency (ms)}} & \multicolumn{3}{c}{\textbf{$\Delta P$ (mW)}} & \multicolumn{3}{c}{\textbf{Size (B)}} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-8} \cmidrule(lr){9-11}
+\textbf{Algorithm} & \textbf{Level} & \textbf{KeyGen} & \textbf{Sign} & \textbf{Verify} & \textbf{KeyGen} & \textbf{Sign} & \textbf{Verify} & \textbf{PK} & \textbf{SK} & \textbf{Sig} \\
+\midrule
+% --- NIST Security Level 1 ---
+ML-DSA-44                  & 1 &    0.368 &    0.975 &  0.324 & 245.8 & 279.5 & 235.8 &  1\,312 &  2\,560 &  2\,420 \\
+Falcon-512                 & 1 &   17.722 &    0.773 &  0.188 & 326.9 & 255.4 & 238.8 &    897 &  1\,281 &    654 \\
+SPHINCS\textsuperscript{+}-SHA2-128s & 1 &  193.609 & 1\,466.336 &  1.589 & 729.7 & 783.7 & 285.7 &     32 &     64 &  7\,856 \\
+\midrule
+% --- NIST Security Level 3 ---
+ML-DSA-65                  & 3 &    0.551 &    1.212 &  0.476 & 240.9 & 268.9 & 240.2 &  1\,952 &  4\,032 &  3\,309 \\
+SPHINCS\textsuperscript{+}-SHA2-192s & 3 &  282.538 & 2\,610.427 &  2.275 & 797.1 & 763.8 & 303.3 &     48 &     96 & 16\,224 \\
+\midrule
+% --- NIST Security Level 5 ---
+ML-DSA-87                  & 5 &    0.739 &    1.626 &  0.718 & 227.0 & 268.1 & 235.2 &  2\,592 &  4\,896 &  4\,627 \\
+Falcon-1024                & 5 &   49.016 &    1.441 &  0.275 & 439.3 & 250.4 & 240.0 &  1\,793 &  2\,305 &  1\,267 \\
+SPHINCS\textsuperscript{+}-SHA2-256s & 5 &  186.472 & 2\,323.760 &  3.277 & 715.1 & 790.5 & 255.0 &     64 &    128 & 29\,792 \\
+\bottomrule
+\end{tabular}
+\end{table*}

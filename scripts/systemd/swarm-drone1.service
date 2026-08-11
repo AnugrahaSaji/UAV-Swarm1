@@ -1,0 +1,19 @@
+[Unit]
+Description=UAV Swarm Drone 1 Controller Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/secure-tunnel-main
+Environment="TUNNEL_HOST_PROFILE=lan"
+Environment="DRONE_ID=drone1"
+Environment="GCS_HOST=192.168.0.100"
+Environment="DRONE_HOST=192.168.0.101"
+ExecStart=/usr/bin/python3 -m sscheduler.sdrone --policy intelligent
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

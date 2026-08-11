@@ -1,0 +1,38 @@
+Category,Metric,Value,Unit
+Discovery,Join Latency (Avg),1.933,ms
+Discovery,Join Latency (P95),3.266,ms
+SMT,Verification (Avg),0.3057,ms
+SMT,Verification (Min),0.2278,ms
+SMT,Verification (Max),7.8726,ms
+SMT,Verification (P95),0.4994,ms
+ML-KEM,Key Generation,0.1746,ms
+ML-KEM,Encapsulation,0.2032,ms
+ML-KEM,Decapsulation,0.2522,ms
+ML-KEM,HKDF Derivation,0.0315,ms
+ML-DSA,Signature Generation,1.6603,ms
+ML-DSA,Signature Verification,0.4112,ms
+Ascon AEAD,Encryption Latency,0.005,ms
+Ascon AEAD,Decryption Latency,0.0052,ms
+Ascon AEAD,Throughput,93991.15,packets/sec
+Heartbeat,RTT (Avg),0.0016,ms
+Heartbeat,Packet Loss,0.0,%
+Heartbeat,Jitter,0.12,ms
+Heartbeat,Node Recovery,0.06,ms
+Routing,Lookup Latency,0.0015,ms
+Routing,Forward Latency,0.0015,ms
+Routing,Duplicate Drops,0,count
+Routing,TTL Expirations,0,count
+Task Manager,Assignment Latency,0.0044,ms
+Task Manager,Completion Latency,0.0004,ms
+Task Manager,Timeout Rate,0.0,%
+Task Manager,Retry Count,0,count
+Cluster Manager,Leader Recovery,0.0,ms
+Cluster Manager,Follower Recovery,0.01,ms
+Cluster Manager,Task Redistribution,0.45,ms
+System,CPU Usage,0.0,%
+System,RAM Usage,43.18,MB
+System,Thread Count,1,threads
+System,Timer Count,0,timers
+Power (INA219),Voltage,5.08,V
+Power (INA219),Current,640.0,mA
+Power (INA219),Power,3251.2,mW

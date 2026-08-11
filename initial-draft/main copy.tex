@@ -1,0 +1,992 @@
+% ============================================================
+% Flying into the Quantum Era: Secure UAV Communication
+% with Expert Policy Scheduling
+% ============================================================
+\documentclass[conference]{IEEEtran}
+
+% ---- Packages ----
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{balance}
+\usepackage{cite}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{siunitx}
+\usepackage{subcaption}
+\usepackage{xspace}
+
+% ---- Macros ----
+\newcommand{\sys}{\textsc{SecureTunnel}}
+\newcommand{\eg}{e.g.,\xspace}
+\newcommand{\ie}{i.e.,\xspace}
+\newcommand{\etal}{et~al.\xspace}
+\newcommand{\mlkem}{\textsf{ML-KEM}}
+\newcommand{\mldsa}{\textsf{ML-DSA}}
+\newcommand{\slhdsa}{\textsf{SLH-DSA}}
+
+\begin{document}
+
+% ---- Title ----
+\title{Flying into the Quantum Era: Secure UAV Communication\\with Expert Policy Scheduling}
+
+\author{
+\IEEEauthorblockN{[Author Names Redacted for Review]}
+\IEEEauthorblockA{[Affiliation Redacted for Review]}
+}
+
+\maketitle
+
+% ============================================================
+% ABSTRACT
+% ============================================================
+\begin{abstract}
+Unmanned Aerial Vehicles (UAVs) have become indispensable across civilian and defence domains, yet the MAVLink protocol that governs their command-and-control communication was designed without cryptographic protection, leaving telemetry and flight commands vulnerable to eavesdropping, injection, and replay attacks.
+The anticipated arrival of cryptographically relevant quantum computers further threatens classical public-key schemes such as RSA and ECDH through Shor's algorithm, rendering any ``store-now, decrypt-later'' capture immediately actionable.
+We present \sys{}, a complete, deployment-ready post-quantum cryptographic tunnel that transparently secures MAVLink traffic between a drone companion computer and a ground control station.
+The system implements a 72-suite registry formed by the level-consistent Cartesian product of nine key-encapsulation mechanisms (ML-KEM, HQC, Classic McEliece at NIST levels 1, 3, and 5), eight digital signature schemes (ML-DSA, Falcon, SPHINCS+), and three authenticated encryption with associated data ciphers (AES-256-GCM, ChaCha20-Poly1305, Ascon-128a).
+A two-message post-quantum handshake establishes session keys via KEM encapsulation, authenticates the ground station through digital signatures, and verifies the drone with HMAC-based pre-shared key authentication.
+We evaluate all 72 suites on a Raspberry Pi~4 companion computer with a Pixhawk flight controller, measuring handshake latency, per-packet AEAD cost, INA219-sampled power consumption at \SI{1}{\kilo\hertz}, CPU temperature, and live MAVLink telemetry integrity across three operational phases: baseline, XGBoost-based DDoS detection, and Transformer-based DDoS detection.
+Results show that ML-KEM-768 with ML-DSA-65 completes a full post-quantum handshake in \SI{21.3}{\milli\second} at \SI{3.91}{\watt}, while the fastest suite (ML-KEM-512 with Falcon-512) achieves \SI{11.1}{\milli\second}.
+A novel three-axis expert policy scheduler (MDEAS) jointly optimises AEAD selection, NIST security level, and DDoS detection intensity based on real-time power, temperature, link quality, and battery state, enabling graceful degradation under resource constraints.
+Our contributions span the first comprehensive PQC suite registry for UAVs, a measurement-driven cost model with 72 characterised suites, and an energy-aware scheduling architecture deployable on resource-constrained embedded platforms.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Post-Quantum Cryptography, UAV Security, MAVLink, Key Encapsulation Mechanism, Digital Signature, Authenticated Encryption, Embedded Systems, DDoS Detection, Crypto Agility
+\end{IEEEkeywords}
+
+% ============================================================
+% I. INTRODUCTION
+% ============================================================
+\section{Introduction}
+\label{sec:intro}
+
+Unmanned Aerial Vehicles have transitioned from niche military platforms to ubiquitous tools deployed in precision agriculture, infrastructure inspection, emergency response, and logistics~\cite{drone-security-survey}.
+The global commercial drone market is projected to exceed USD~54 billion by 2030, with millions of autonomous systems sharing regulated and unregulated airspace.
+At the core of most small UAV systems lies \emph{MAVLink}~\cite{mavlink-spec}, a lightweight binary telemetry protocol that carries flight commands, sensor data, and heartbeat signals between a flight controller and a ground control station (GCS).
+MAVLink~v2 introduced message signing with SHA-256 HMAC, yet it lacks key establishment, forward secrecy, and confidentiality---any adversary with network proximity can observe, inject, or replay commands~\cite{drone-pqc-analysis}.
+
+This vulnerability is compounded by the looming quantum threat.
+Shor's algorithm~\cite{shor1994} breaks RSA, DSA, and elliptic-curve Diffie--Hellman in polynomial time on a sufficiently large quantum computer; Grover's algorithm~\cite{grover1996} halves the effective security of symmetric ciphers.
+The National Institute of Standards and Technology (NIST) has responded by standardising post-quantum algorithms: \mlkem{} (FIPS~203)~\cite{nist-fips203} for key encapsulation, \mldsa{} (FIPS~204)~\cite{nist-fips204} for digital signatures, and \slhdsa{} (FIPS~205)~\cite{nist-fips205} as a hash-based signature alternative.
+Additional candidates---HQC~\cite{hqc} (code-based) and Classic McEliece~\cite{mceliece} (code-based, conservative)---remain under evaluation in NIST's fourth round~\cite{nist-round4}.
+Despite this standardisation progress, \emph{no prior system integrates a comprehensive PQC suite registry, real-time cost measurement, and adaptive scheduling into a deployable UAV tunnel}.
+
+\subsection{Problem Statement and Research Gap}
+
+Existing PQC benchmarks for embedded platforms~\cite{pqm4, pqc-arm-bench} focus on individual primitive timing in isolation, without measuring the compound cost of a complete handshake over a live MAVLink session.
+PQC tunnel prototypes such as Rosenpass~\cite{rosenpass} target VPN links but do not address UAV-specific constraints: limited power budgets, thermal throttling, real-time telemetry deadlines, and the need for crypto agility during flight.
+Meanwhile, drone security research~\cite{drone-security-survey, drone-pqc-analysis} identifies the threat but stops short of a full system implementation with measured deployment cost.
+
+\subsection{Contributions}
+
+This paper makes the following contributions:
+
+\begin{enumerate}[label=\textbf{C\arabic*}, leftmargin=2em]
+    \item \textbf{PQC Suite Registry.} A 72-suite registry constructed from the NIST-level-consistent Cartesian product of 9~KEMs $\times$ 8~signatures $\times$ 3~AEADs, with a two-message handshake protocol providing forward secrecy, mutual authentication, and anti-downgrade protection.
+
+    \item \textbf{Measurement-Driven Cost Model.} A comprehensive benchmark of all 72~suites on a Raspberry~Pi~4 companion computer with Pixhawk flight controller, measuring handshake latency, per-packet AEAD cost, INA219 power at \SI{1}{\kilo\hertz}, temperature, and MAVLink integrity across baseline and two DDoS-detection configurations.
+
+    \item \textbf{Three-Axis Expert Scheduler (MDEAS).} A novel Measurement-Driven Energy-Aware Scheduler that jointly optimises AEAD selection (data-plane axis), NIST security level (control-plane axis), and DDoS detection intensity (compute-plane axis) using real-time telemetry, thermal prediction, and break-even cost analysis.
+
+    \item \textbf{Deployable System.} An open-source, end-to-end implementation operating as a transparent ``bump-in-the-wire'' proxy requiring no firmware modification, validated with live ArduPilot telemetry over WiFi.
+\end{enumerate}
+
+\subsection{Paper Organisation}
+
+Section~\ref{sec:related} surveys related work.
+Section~\ref{sec:threat} defines the threat model.
+Section~\ref{sec:arch} describes the post-quantum system architecture.
+Section~\ref{sec:setup} details the experimental setup.
+Section~\ref{sec:results} presents results and analysis.
+Section~\ref{sec:discussion} discusses trade-offs and limitations.
+Section~\ref{sec:conclusion} concludes with future directions.
+
+% ============================================================
+% II. RELATED WORK
+% ============================================================
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Post-Quantum Cryptography for Embedded Systems}
+
+The pqm4 project~\cite{pqm4} provides optimised ARM Cortex-M4 implementations of NIST PQC candidates, establishing micro-benchmark baselines for key generation, encapsulation, and signing on bare-metal platforms.
+Kannwischer \etal~\cite{pqc-arm-bench} extended this to Cortex-A processors, reporting ML-KEM-768 key generation in \SI{0.33}{\milli\second} on a Cortex-A72 at \SI{1.8}{\giga\hertz}.
+These works benchmark primitives in isolation; they do not measure compound handshake cost over a live protocol session, nor do they account for the energy and thermal cost of sustained operation.
+Our work measures all 72 suites end-to-end on a Raspberry~Pi~4 (Cortex-A72) with INA219 power instrumentation, capturing the true deployment cost including MAVLink overhead.
+
+\subsection{PQC in Network Protocols}
+
+Post-quantum migration has been studied in TLS~1.3, where Paquin \etal~\cite{pqc-tls-bench} evaluated hybrid key exchange using liboqs~\cite{liboqs}.
+Rosenpass~\cite{rosenpass} adds a PQC handshake layer atop WireGuard, using Classic McEliece for long-term keys and Kyber for ephemeral exchange.
+Hülsing \etal~\cite{pqc-vpn} analysed PQC overhead in IPsec and OpenVPN deployments.
+These protocol-level studies target server-class hardware with ample resources.
+In contrast, our tunnel targets a \SI{4}{\watt} embedded companion computer with thermal constraints and battery awareness, requiring an adaptive scheduling layer absent in prior protocol work.
+
+The Open Quantum Safe (OQS) project~\cite{liboqs, oqspython} provides the \texttt{liboqs} C library and its Python wrapper, implementing all NIST PQC finalists and additional candidates.
+We build directly on \texttt{liboqs-python} for all KEM and signature operations, using version~0.14.0 with ARM NEON optimisations enabled.
+
+\subsection{UAV Security and MAVLink Protection}
+
+Altawy and Youssef~\cite{drone-security-survey} surveyed security, privacy, and safety aspects of civilian drones, identifying MAVLink's lack of encryption as a critical vulnerability.
+Pham and Vakilinia~\cite{drone-pqc-analysis} analysed post-quantum cryptography for UAV communication, evaluating KEM and signature overhead on ARM processors but without a complete tunnel implementation or runtime adaptation.
+The MAVLink specification~\cite{mavlink-spec} defines optional message signing (SHA-256 HMAC) in version~2.0, but this provides only integrity, not confidentiality or forward secrecy.
+Our system provides a \emph{complete} transparent tunnel: KEM-based key establishment, signature-verified authentication, AEAD-encrypted data plane, and runtime suite adaptation---all without modifying the flight controller firmware.
+
+\subsection{DDoS Detection on Edge Devices}
+
+Lightweight DDoS detection on embedded platforms has been explored using ensemble methods (XGBoost, Random Forest) and deep learning architectures. Sharafaldin \etal~\cite{cicids2017} introduced the CIC-IDS dataset widely used for intrusion detection benchmarking. More recent work has applied Transformer-based models to network traffic classification~\cite{tst-ids}, achieving higher accuracy at a significant computational cost.
+Our system integrates two detector tiers: an XGBoost model with 54~features and \SI{\approx 7}{\milli\second} inference time, and a Time Series Transformer (TST) model with 46~features and \SI{\approx 11}{\milli\second} inference time.
+Critically, we measure the \emph{system-level impact} of running these detectors concurrently with PQC operations: XGBoost adds \SI{0.95}{\watt} and \SI{4.8}{\celsius}; TST adds \SI{1.97}{\watt} and \SI{10.7}{\celsius}---costs that must be budgeted by the scheduler.
+
+\subsection{Crypto Agility and Runtime Adaptation}
+
+Crypto agility---the ability to switch algorithms at runtime---is recognised as essential for post-quantum migration~\cite{nist-round4}.
+However, most systems treat it as a configuration-time choice rather than a runtime decision.
+Barker~\cite{nist-sp800-131a} recommends algorithm transitions but does not address the dynamic context of resource-constrained flight.
+Our MDEAS scheduler treats crypto agility as a \emph{continuous optimisation problem} with three axes (AEAD, security level, detector intensity), using hysteresis, break-even analysis, and thermal prediction to avoid oscillation while responding to changing conditions.
+
+% ============================================================
+% III. THREAT MODEL
+% ============================================================
+\section{Threat Model}
+\label{sec:threat}
+
+We consider four adversary classes with increasing capability, following the Dolev--Yao model~\cite{dolev1983security} extended with quantum computation.
+
+\subsection{Adversary Classes}
+
+\textbf{$\mathcal{A}_1$: Passive Eavesdropper.}
+Captures all network traffic on the wireless link between drone and GCS.
+Can perform ``store now, decrypt later'' for future quantum decryption.
+
+\textbf{$\mathcal{A}_2$: Active Network Adversary.}
+Controls the network channel (Dolev--Yao model): can intercept, modify, replay, delay, and inject packets.
+Can mount man-in-the-middle attacks, injection of rogue MAVLink commands, and GPS spoofing via crafted \texttt{GLOBAL\_POSITION\_INT} messages.
+
+\textbf{$\mathcal{A}_3$: DDoS Adversary.}
+Floods the encrypted channel with malformed or replayed packets to exhaust computational resources on the companion computer, degrading real-time telemetry delivery.
+
+\textbf{$\mathcal{A}_4$: Quantum Adversary.}
+Possesses a Cryptographically Relevant Quantum Computer (CRQC) capable of running Shor's algorithm against RSA, DSA, and ECDH, and Grover's algorithm to accelerate brute-force search against symmetric ciphers.
+
+\subsection{Trust Assumptions}
+
+\begin{enumerate}[label=\textbf{T\arabic*}]
+    \item The flight controller firmware (ArduPilot~\cite{ardupilot}) and companion OS are trusted.
+    \item A pre-shared key (PSK) is securely provisioned on the drone before deployment.
+    \item The GCS signing key pair is generated offline and the public key is distributed to the drone.
+    \item The \texttt{liboqs}~\cite{liboqs} library correctly implements the NIST PQC algorithms.
+    \item Physical access to the companion computer during flight is infeasible.
+\end{enumerate}
+
+\subsection{Security Goals}
+
+\begin{enumerate}[label=\textbf{G\arabic*}]
+    \item \textbf{Confidentiality.} All MAVLink traffic between drone and GCS is encrypted with AEAD, rendering eavesdropping (including quantum-assisted ``store now, decrypt later'') ineffective.
+    \item \textbf{Integrity and Authenticity.} Every packet carries an AEAD authentication tag bound to the 22-byte header as associated data; any modification is detected.
+    \item \textbf{Replay Protection.} A sliding-window replay filter (default window $W = 1024$, following RFC~6479 / WireGuard pattern) rejects duplicate sequence numbers.
+    \item \textbf{Forward Secrecy.} Ephemeral KEM key pairs are generated per session; compromise of long-term keys does not reveal past session keys.
+    \item \textbf{Mutual Authentication.} The GCS proves its identity via digital signature; the drone proves its identity via HMAC over PSK.
+    \item \textbf{Anti-Downgrade.} The wire version byte is included in the signed transcript, preventing protocol version rollback.
+    \item \textbf{Availability under DDoS.} Integrated ML-based detection identifies volumetric attacks; the scheduler downgrades to lighter suites to maintain telemetry throughput.
+\end{enumerate}
+
+Table~\ref{tab:threat-mitigation} maps each adversary to the system mechanisms that counter it.
+
+\begin{table}[t]
+\centering
+\caption{Threat--Mitigation Mapping}
+\label{tab:threat-mitigation}
+\small
+\begin{tabular}{@{}lp{5.5cm}@{}}
+\toprule
+\textbf{Adversary} & \textbf{Countermeasure} \\
+\midrule
+$\mathcal{A}_1$ (Eavesdrop) & AEAD encryption (G1), PQ KEM key exchange \\
+$\mathcal{A}_2$ (Active) & Digital signature auth (G5), AEAD integrity (G2), replay window (G3), anti-downgrade (G6) \\
+$\mathcal{A}_3$ (DDoS) & ML detectors, scheduler degradation (G7), rate-limited handshake \\
+$\mathcal{A}_4$ (Quantum) & NIST PQC KEMs and signatures (G1, G4, G5) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+% IV. POST-QUANTUM SYSTEM ARCHITECTURE
+% ============================================================
+\section{Post-Quantum System Architecture}
+\label{sec:arch}
+
+\subsection{System Overview}
+
+\sys{} operates as a transparent ``bump-in-the-wire'' proxy that requires no modification to the flight controller firmware or ground station software.
+Fig.~\ref{fig:arch-overview} illustrates the system topology.
+
+\begin{figure}[t]
+    \centering
+    % PLACEHOLDER: System architecture TikZ diagram
+    % Drone Host: [Pixhawk FC] --serial--> [MAVProxy] --UDP:47003/47004--> [PQC Proxy] --encrypted UDP:46011/46012--> WiFi
+    % GCS Host: WiFi --> [PQC Proxy] --UDP:47001/47002--> [MAVProxy] --UDP:14550--> [QGroundControl]
+    % Control: TCP:48080 between schedulers
+    % Telemetry: UDP:52080 GCS-->Drone
+    \fbox{\parbox{0.95\columnwidth}{\centering\small
+    \textbf{[Figure Placeholder]}\par\medskip
+    System architecture showing drone-side (Pixhawk $\to$ MAVProxy $\to$ PQC Proxy) and GCS-side (PQC Proxy $\to$ MAVProxy $\to$ QGC) with encrypted UDP channel, TCP control plane, and optional DDoS detector.
+    }}
+    \caption{End-to-end system architecture of \sys{}.}
+    \label{fig:arch-overview}
+\end{figure}
+
+The drone-side companion computer (Raspberry Pi~4) runs MAVProxy~\cite{mavproxy} connected to the Pixhawk flight controller~\cite{pixhawk} via USB serial.
+MAVProxy forwards telemetry to the PQC proxy over local UDP (ports 47003/47004).
+The proxy encrypts each packet with the negotiated AEAD cipher using the session key derived during the PQC handshake, transmits it over WiFi on the encrypted UDP channel (ports 46011/46012), and the GCS-side proxy decrypts and delivers to the ground MAVProxy instance.
+A TCP control channel (port 48080) carries scheduler commands, clock synchronisation, and rekey negotiation between the drone-driven scheduler and the GCS follower.
+
+\subsection{Suite Registry Design}
+\label{sec:suite-registry}
+
+The suite registry is the combinatorial backbone of \sys{}.
+Each suite is a triple $(\mathrm{KEM}, \mathrm{SIG}, \mathrm{AEAD})$ where the KEM and SIG must share the same NIST security level.
+We include algorithms from three KEM families and three signature families at three NIST levels, crossed with three AEAD ciphers.
+
+\textbf{NIST Level Mapping.}
+\begin{itemize}[noitemsep]
+    \item \textbf{L1} ($\approx$AES-128 security): ML-KEM-512, HQC-128, Classic-McEliece-348864, ML-DSA-44\footnote{ML-DSA-44 is classified as NIST Level~2 in FIPS~204; we map it to L1 for practical pairing with L1 KEMs following the rationale that L2 exceeds L1 by a small margin.}, Falcon-512, SPHINCS$^+$-128s.
+    \item \textbf{L3} ($\approx$AES-192 security): ML-KEM-768, HQC-192, Classic-McEliece-460896, ML-DSA-65, SPHINCS$^+$-192s.
+    \item \textbf{L5} ($\approx$AES-256 security): ML-KEM-1024, HQC-256, Classic-McEliece-8192128, ML-DSA-87, Falcon-1024, SPHINCS$^+$-256s.
+\end{itemize}
+
+The level-consistent pairing produces:
+\begin{equation}
+\label{eq:suite-count}
+    |\mathcal{S}| = \underbrace{(3 \times 3)}_{\text{L1}} + \underbrace{(3 \times 2)}_{\text{L3}} + \underbrace{(3 \times 3)}_{\text{L5}} = 24
+\end{equation}
+KEM$\times$SIG pairs ($\text{L3}$ has no Falcon variant), each crossed with 3 AEADs:
+\begin{equation}
+    N_{\text{suites}} = 24 \times 3 = 72
+\end{equation}
+
+Each suite is assigned a canonical identifier of the form \texttt{cs-\{kem\}-\{aead\}-\{sig\}} (e.g., \texttt{cs-mlkem768-aesgcm-mldsa65}).
+
+Table~\ref{tab:kem-params} summarises the KEM parameters, and Table~\ref{tab:sig-params} summarises the signature parameters.
+
+\begin{table}[t]
+\centering
+\caption{KEM Algorithm Parameters (from liboqs 0.14.0)}
+\label{tab:kem-params}
+\small
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+\textbf{Algorithm} & \textbf{Level} & \textbf{PK (B)} & \textbf{CT (B)} & \textbf{SS (B)} \\
+\midrule
+ML-KEM-512 & L1 & 800 & 768 & 32 \\
+ML-KEM-768 & L3 & 1\,184 & 1\,088 & 32 \\
+ML-KEM-1024 & L5 & 1\,568 & 1\,568 & 32 \\
+HQC-128 & L1 & 2\,249 & 4\,433 & 64 \\
+HQC-192 & L3 & 4\,522 & 9\,026 & 64 \\
+HQC-256 & L5 & 7\,245 & 14\,469 & 64 \\
+McEliece-348864 & L1 & 261\,120 & 96 & 32 \\
+McEliece-460896 & L3 & 524\,160 & 156 & 32 \\
+McEliece-8192128 & L5 & 1\,357\,824 & 208 & 32 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Signature Algorithm Parameters (from liboqs 0.14.0)}
+\label{tab:sig-params}
+\small
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+\textbf{Algorithm} & \textbf{Level} & \textbf{PK (B)} & \textbf{SK (B)} & \textbf{Sig (B)} \\
+\midrule
+ML-DSA-44 & L1 & 1\,312 & 2\,560 & 2\,420 \\
+ML-DSA-65 & L3 & 1\,952 & 4\,032 & 3\,309 \\
+ML-DSA-87 & L5 & 2\,592 & 4\,896 & 4\,627 \\
+Falcon-512 & L1 & 897 & 1\,281 & $\leq$666 \\
+Falcon-1024 & L5 & 1\,793 & 2\,305 & $\leq$1\,280 \\
+SPHINCS$^+$-128s & L1 & 32 & 64 & 7\,856 \\
+SPHINCS$^+$-192s & L3 & 48 & 96 & 16\,224 \\
+SPHINCS$^+$-256s & L5 & 64 & 128 & 29\,792 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{KEM-Based Key Establishment}
+
+The handshake uses a two-message protocol over TCP (port 46000):
+
+\textbf{Message 1: ServerHello} (GCS $\to$ Drone).
+The GCS generates an ephemeral KEM key pair $(pk_{\mathrm{kem}}, sk_{\mathrm{kem}}) \gets \mathrm{KEM.KeyGen}()$, a random 8-byte session identifier $\mathit{sid}$, and a random 8-byte challenge $c$.
+It constructs the transcript:
+\begin{equation}
+\label{eq:transcript}
+    T = v \mathbin\| \texttt{pq-drone-gcs:v1} \mathbin\| \mathit{sid} \mathbin\| \mathrm{kem\_name} \mathbin\| \mathrm{sig\_name} \mathbin\| pk_{\mathrm{kem}} \mathbin\| c
+\end{equation}
+where $v$ is the frozen wire version byte.
+The GCS signs the transcript:
+$\sigma_{\mathrm{gcs}} \gets \mathrm{SIG.Sign}(sk_{\mathrm{gcs}}, T)$
+and sends the length-prefixed wire message containing all fields plus $\sigma_{\mathrm{gcs}}$.
+
+\textbf{Message 2: ClientReply} (Drone $\to$ GCS).
+The drone verifies $\sigma_{\mathrm{gcs}}$ using the pre-distributed GCS public key, checks that the negotiated algorithms match the expected suite (anti-downgrade), and computes:
+\begin{equation}
+    (\mathit{ct}, K) \gets \mathrm{KEM.Encaps}(pk_{\mathrm{kem}})
+\end{equation}
+where $K$ is the shared secret.
+It also computes an HMAC authentication tag over the entire ServerHello wire:
+\begin{equation}
+    \tau = \mathrm{HMAC\text{-}SHA256}(\mathit{PSK}, \mathit{ServerHello}_{\mathrm{wire}})
+\end{equation}
+and sends $(ct, \tau)$.
+
+\textbf{Key Derivation.}
+Both sides derive directional transport keys using HKDF-SHA256~\cite{rfc5869}:
+\begin{equation}
+\label{eq:hkdf}
+    (k_{d \to g} \mathbin\| k_{g \to d}) = \mathrm{HKDF}(K, \text{``pq-drone-gcs|hkdf|v1''}, \mathit{info}, 64)
+\end{equation}
+where $\mathit{info}$ incorporates $\mathit{sid}$, $\mathrm{kem\_name}$, and $\mathrm{sig\_name}$.
+The shared secret $K$ is zeroed immediately after derivation, following the WireGuard pattern.
+
+\subsection{AEAD Data-Plane Framing}
+
+Each plaintext MAVLink packet is encrypted under the negotiated AEAD cipher.
+The wire format is:
+\begin{equation}
+    \mathit{frame} = \underbrace{H}_{\text{22\,B header}} \mathbin\| \mathrm{AEAD.Enc}(k, \mathit{iv}, \mathit{pt}, H)
+\end{equation}
+
+The 22-byte header $H$ is structured as:
+\[
+H = (v, \mathit{kem\_id}, \mathit{kem\_p}, \mathit{sig\_id}, \mathit{sig\_p}, \mathit{sid}^{8}, \mathit{seq}^{8}, \mathit{epoch})
+\]
+and is bound as associated authenticated data (AAD) to the AEAD operation.
+The 12-byte initialisation vector is deterministically constructed from the epoch byte and sequence number, avoiding IV transmission and saving 12~bytes per packet:
+\begin{equation}
+    \mathit{iv} = \mathit{epoch} \mathbin\| \mathit{seq}_{11\text{B}}
+\end{equation}
+
+Replay protection follows the WireGuard/RFC~6479 sliding-window approach with a configurable window $W$ (default 1024).
+The implementation uses a split \emph{check/commit} pattern: the replay window is checked \emph{before} AEAD decryption and committed \emph{after} successful authentication, preventing a malicious packet from shifting the window without valid authentication.
+
+\subsection{Rekey Protocol}
+
+Two rekey modes are supported:
+
+\textbf{Cold Restart.}
+The proxy process is terminated, a new handshake is performed with the target suite, and a fresh proxy is started.
+This mode provides the strongest isolation between suites, as no key material persists across the restart boundary.
+It incurs a brief blackout ($\sim$\SI{2}{\second}) during transition.
+
+\textbf{In-Band Rekey.}
+The proxy remains running; the scheduler sends a \texttt{prepare\_rekey} control message (packet type 0x02) through the encrypted channel.
+Both sides execute a new handshake on the TCP port (serialised with a lock to avoid port conflicts), atomically swap the AEAD \texttt{Sender}/\texttt{Receiver} objects, and zero the old key material.
+This minimises blackout but requires careful coordination via a two-phase commit protocol:
+
+\begin{enumerate}[noitemsep]
+    \item Coordinator $\to$ Follower: \texttt{prepare\_rekey($\mathit{suite}$, $\mathit{rid}$)}
+    \item Follower $\to$ Coordinator: \texttt{prepare\_ok($\mathit{rid}$)} or \texttt{prepare\_fail}
+    \item Coordinator $\to$ Follower: \texttt{commit\_rekey($\mathit{suite}$, $\mathit{rid}$)}
+    \item Both execute handshake $\to$ atomic cipher swap
+\end{enumerate}
+
+The rekey overhead fraction for a session of duration $R$ with handshake time $T_{\mathrm{hs}}$ is:
+\begin{equation}
+\label{eq:rekey-overhead}
+    \Phi(R) = \frac{T_{\mathrm{hs}}}{R + T_{\mathrm{hs}}}
+\end{equation}
+
+For the default suite (ML-KEM-768 + ML-DSA-65, $T_{\mathrm{hs}} = \SI{21.3}{\milli\second}$) with a 60-second rekey interval, $\Phi = 0.035\%$.
+
+\subsection{DDoS Detection Pipeline}
+
+The DDoS detection pipeline runs on the companion computer alongside the PQC proxy.
+Two detection tiers are available:
+
+\textbf{XGBoost Detector.}
+A gradient-boosted tree model operating on 54 extracted features per traffic window.
+Inference takes {\raise.17ex\hbox{$\scriptstyle\sim$}}\SI{7}{\milli\second} per window, consuming an additional \SI{0.95}{\watt} and raising temperature by \SI{4.8}{\celsius}.
+
+\textbf{Time Series Transformer (TST) Detector.}
+A Transformer-based intrusion detection model operating on 46 features.
+Inference takes {\raise.17ex\hbox{$\scriptstyle\sim$}}\SI{11}{\milli\second} per window, consuming an additional \SI{1.97}{\watt} and raising temperature by \SI{10.7}{\celsius}.
+
+Only one detector runs at any time (the companion computer lacks resources for concurrent operation).
+The scheduler manages transitions between detector levels using the same process-group lifecycle management as proxy processes.
+
+\subsection{Three-Axis Expert Scheduler (MDEAS)}
+\label{sec:scheduler}
+
+The Measurement-Driven Energy-Aware Scheduler (MDEAS) treats crypto agility as a joint optimisation problem over three axes:
+
+\textbf{Axis 1 --- AEAD Selection} (data-plane, per-packet cost).
+Selects among \{ChaCha20-Poly1305, AES-256-GCM, Ascon-128a\} based on measured per-packet encrypt/decrypt latency, temperature, and CPU utilisation.
+The AEAD cost profile is maintained as an exponentially weighted moving average (EWMA) with $\alpha = 0.2$ (steady state) and pre-seeded from benchmark data (Benchmark-Seeded Initialisation):
+\begin{equation}
+\label{eq:ewma}
+    \hat{C}_{n+1} = \alpha \cdot C_{\mathrm{obs}} + (1 - \alpha) \cdot \hat{C}_{n}
+\end{equation}
+
+\textbf{Axis 2 --- NIST Security Level} (control-plane, per-handshake cost).
+Selects among \{L1, L3, L5\} with a fixed KEM+SIG pairing per level: L1$\to$(ML-KEM-512, ML-DSA-44), L3$\to$(ML-KEM-768, ML-DSA-65), L5$\to$(ML-KEM-1024, ML-DSA-87).
+
+\textbf{Axis 3 --- DDoS Detection Level} (compute-plane, background cost).
+Selects among \{None, XGBoost, TST\} based on threat indicators with awareness of detector overhead.
+
+\textbf{Decision Cascade.}
+The scheduler evaluates a 12-gate priority cascade at each tick:
+
+\begin{enumerate}[noitemsep, label=\arabic*.]
+    \item Telemetry stale ($> \SI{2}{\second}$) $\to$ HOLD
+    \item DDoS detected (drop ratio $> 0.10$) $\to$ EMERGENCY
+    \item Battery critical ($< \SI{14.0}{\volt}$) $\to$ EMERGENCY
+    \item Temperature critical ($> \SI{80}{\celsius}$) $\to$ EMERGENCY
+    \item Emergency active $\to$ kill detector
+    \item Detector thermal ceiling exceeded $\to$ DOWNGRADE\_DETECTOR
+    \item Predictive thermal crossing (\SI{60}{\second} extrapolation) $\to$ SWITCH\_AEAD
+    \item Thermal/CPU stress $\to$ SWITCH\_AEAD (with break-even)
+    \item AEAD recovery (stress subsided) $\to$ SWITCH\_AEAD
+    \item Link degraded ($\text{gap}_{p95} > \SI{1}{\second}$) $\to$ DOWNGRADE\_LEVEL
+    \item Stable conditions, proactive rekey due $\to$ REKEY
+    \item Stable, upgrade hysteresis satisfied $\to$ UPGRADE
+\end{enumerate}
+
+\textbf{Break-Even Analysis.}
+Before triggering an AEAD switch, the scheduler computes the break-even time:
+\begin{equation}
+\label{eq:break-even}
+    t_{\mathrm{be}} = \frac{C_{\mathrm{rekey}}}{(\hat{C}_{\mathrm{cur}} - \hat{C}_{\mathrm{tgt}}) \cdot r_{\mathrm{pkt}} \cdot 2}
+\end{equation}
+where $C_{\mathrm{rekey}} = \SI{300}{\milli\second}$ is the handshake cost, $\hat{C}$ are the EWMA AEAD costs, and $r_{\mathrm{pkt}}$ is the packet rate.
+The switch is executed only if $t_{\mathrm{be}} < \SI{30}{\second}$ (nominal) or $t_{\mathrm{be}} < \SI{15}{\second}$ (under stress).
+
+\textbf{Hysteresis.}
+Downgrade requires \SI{5}{\second} of sustained adverse conditions; upgrade requires \SI{30}{\second} of nominal conditions (tripled to \SI{90}{\second} when the vehicle is armed).
+This prevents oscillation during transient load spikes.
+
+\textbf{Cross-Axis Constraints.}
+Not all axis combinations are permitted:
+\begin{itemize}[noitemsep]
+    \item Ascon-128a is forbidden with TST (combined overhead exceeds thermal budget).
+    \item Classic McEliece is discouraged with TST (handshake length competes for CPU).
+    \item Classic McEliece + SPHINCS$^+$ is forbidden at any detector level.
+\end{itemize}
+
+% ============================================================
+% V. EXPERIMENTAL SETUP
+% ============================================================
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Hardware Platform}
+
+\textbf{Drone Companion Computer.}
+Raspberry Pi~4 Model~B Rev~1.5 with Broadcom BCM2711 SoC (4-core ARM Cortex-A72 at \SI{1.8}{\giga\hertz}), \SI{4}{\giga\byte} LPDDR4 RAM.
+The CPU governor is locked to \texttt{performance} mode to eliminate frequency scaling artefacts.
+Power is measured using a Texas Instruments INA219~\cite{ina219} bidirectional current/power monitor on the I$^2$C bus at address \texttt{0x40}, sampling at \SI{1}{\kilo\hertz} in high-speed ADC mode (BADC=0x0080, settle time \SI{0.4}{\milli\second}).
+The shunt resistor is \SI{0.1}{\ohm}.
+Voltage is read from register 0x02 (bits [15:3], LSB = \SI{4}{\milli\volt}); shunt voltage from register 0x01 (signed 16-bit, LSB = \SI{10}{\micro\volt}).
+Energy is computed via trapezoidal integration over the power samples.
+Temperature is read from \texttt{/sys/class/thermal/thermal\_zone0/temp}.
+
+\textbf{Flight Controller.}
+Pixhawk 6C Mini~\cite{pixhawk} running ArduPilot~\cite{ardupilot} (ArduCopter v4.5.7), connected to the companion computer via USB serial.
+The flight controller provides real-time MAVLink telemetry including heartbeat, system status, battery voltage/current, attitude, and GPS position.
+
+\textbf{Ground Control Station.}
+Windows laptop running MAVProxy and QGroundControl, connected to the drone over WiFi.
+
+\subsection{Software Stack}
+
+\textbf{Cryptographic Libraries.}
+\texttt{liboqs}~\cite{liboqs} version 0.14.0 (C library with ARM NEON optimisations), accessed via \texttt{liboqs-python}~\cite{oqspython}.
+AEAD ciphers use the \texttt{cryptography}~\cite{cryptography-lib} Python package (AES-GCM, ChaCha20-Poly1305) and the \texttt{ascon}~\cite{ascon} Python package (Ascon-128a).
+
+\textbf{Protocol Stack.}
+MAVProxy~\cite{mavproxy} for MAVLink routing; \texttt{pymavlink} for protocol parsing and sequence tracking; \texttt{psutil} for system metrics; \texttt{smbus2} for INA219 register access.
+
+\textbf{DDoS Detectors.}
+XGBoost model ($\sim$\SI{33}{\mega\byte}, 54 features) and TST model (Transformer-based, 46 features), both running in dedicated Python virtual environments on the companion computer.
+
+\textbf{Scheduling.}
+The benchmarks use the \texttt{BenchmarkPolicy} with \SI{10}{\second} per suite, cold-restart mode, and sequential cycling through all 72 suites sorted by NIST level, then KEM, then signature.
+
+\subsection{Benchmark Orchestration}
+
+The benchmark is orchestrated by a PowerShell script (\texttt{run\_e2e\_benchmark.ps1}) that executes three phases:
+
+\begin{enumerate}[noitemsep]
+    \item \textbf{Phase~1 (Baseline):} All 72~suites with no DDoS detector.
+    \item \textbf{Phase~2 (XGBoost):} All 72~suites with XGBoost detector active.
+    \item \textbf{Phase~3 (TST):} All 72~suites with TST detector active.
+\end{enumerate}
+
+Each phase proceeds as follows: the GCS benchmark server starts locally; the drone benchmark scheduler is launched via SSH; for each suite, the drone orchestrator sends a \texttt{start\_proxy} command to the GCS, starts the local proxy, waits for the PQC handshake to complete, runs the MAVLink session for \SI{10}{\second}, collects metrics from both sides, and advances to the next suite.
+Clock synchronisation between drone and GCS is performed every 10~suites using a Chronos-style NTP exchange over the TCP control channel.
+
+A \SI{120}{\second} inter-phase cool-down allows thermal recovery between phases.
+
+\subsection{Metrics Collection}
+
+For each suite, a comprehensive JSON document is produced containing 18~metric categories (detailed in Section~\ref{sec:results}).
+Timing is measured using \texttt{time.perf\_counter\_ns()} (nanosecond resolution).
+Power samples are collected at \SI{1}{\kilo\hertz} throughout the session and integrated into per-suite energy values.
+MAVLink integrity is monitored via a dedicated sniff port, tracking per-message-type counts, sequence gaps, heartbeat intervals, and RTT via COMMAND\_ACK and active PING probes.
+
+% ============================================================
+% VI. RESULTS AND ANALYSIS
+% ============================================================
+\section{Results and Analysis}
+\label{sec:results}
+
+We present results from the complete 72-suite benchmark across all three operational phases measured on the Raspberry Pi~4 platform.
+All numbers are single-run observations from the production benchmark (run tag \texttt{20260220\_full}), measured under controlled lab conditions with CPU governor locked to \texttt{performance} mode.
+
+\subsection{Individual KEM Benchmarks}
+
+Table~\ref{tab:kem-timing} reports the average KEM primitive timing across all suites using each KEM algorithm.
+
+\begin{table}[t]
+\centering
+\caption{KEM Primitive Timing on RPi4 (avg over all suites using each KEM, no-ddos baseline)}
+\label{tab:kem-timing}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Algorithm} & \textbf{KeyGen} & \textbf{Encaps} & \textbf{Decaps} & \textbf{HS} \\
+ & (ms) & (ms) & (ms) & (ms) \\
+\midrule
+ML-KEM-512 & 0.62 & 0.33 & 0.16 & 233.5 \\
+ML-KEM-768 & 0.50 & 0.36 & 0.18 & 712.4 \\
+ML-KEM-1024 & 0.28 & 0.37 & 0.24 & 403.7 \\
+\midrule
+HQC-128 & 2.39 & 45.91 & 7.26 & 276.1 \\
+HQC-192 & 4.39 & 138.49 & 18.25 & 858.8 \\
+HQC-256 & 8.44 & 252.86 & 29.73 & 678.5 \\
+\midrule
+McEliece-348864 & 122.74 & 0.88 & 21.06 & 570.7 \\
+McEliece-460896 & 160.86 & 3.28 & 59.90 & 9196.5 \\
+McEliece-8192128 & 502.89 & 3.35 & 146.77 & 2228.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ML-KEM primitives are one to three orders of magnitude faster than HQC and Classic McEliece.
+ML-KEM-768 key generation completes in \SI{0.50}{\milli\second}, while Classic-McEliece-8192128 requires \SI{502.89}{\milli\second}---a factor of $\sim$1000$\times$.
+The high average handshake times for ML-KEM-768 (\SI{712.4}{\milli\second}) compared to ML-KEM-512 (\SI{233.5}{\milli\second}) reflect that ML-KEM-768 is paired exclusively with L3 signatures (ML-DSA-65, SPHINCS$^+$-192s) which are heavier than L1 signatures; individual ML-KEM-768 + ML-DSA-65 handshakes complete in only \SI{21.3}{\milli\second}.
+
+HQC encapsulation is notably expensive: HQC-256 requires \SI{252.86}{\milli\second} per encapsulation, making it the costliest per-handshake KEM operation.
+Classic McEliece's key generation dominates its handshake cost, while its encapsulation is fast (leveraging the Niederreiter dual encoding).
+
+\subsection{Signature Benchmarks}
+
+Table~\ref{tab:sig-timing} reports signature timing averaged over all suites pairing each signature.
+
+\begin{table}[t]
+\centering
+\caption{Signature Primitive Timing on RPi4 (no-ddos baseline)}
+\label{tab:sig-timing}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Algorithm} & \textbf{Sign} & \textbf{Verify} & \textbf{Sig Size} & \textbf{HS} \\
+ & (ms) & (ms) & (B) & (ms) \\
+\midrule
+ML-DSA-44 & 0.84 & 1.49 & 2\,420 & 131.0 \\
+ML-DSA-65 & 0.87 & 2.78 & 3\,309 & 327.6 \\
+ML-DSA-87 & 2.01 & 5.62 & 4\,627 & 843.2 \\
+\midrule
+Falcon-512 & 0.50 & 1.47 & 656 & 137.0 \\
+Falcon-1024 & 2.29 & 6.58 & 1\,271 & 666.1 \\
+\midrule
+SPHINCS$^+$-128s & --- & --- & 7\,856 & --- \\
+SPHINCS$^+$-192s & --- & --- & 16\,224 & --- \\
+SPHINCS$^+$-256s & --- & --- & 29\,792 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Falcon-512 achieves the fastest signing (\SI{0.50}{\milli\second}) and produces the smallest signatures (656~bytes), making it attractive for UAV deployment.
+ML-DSA offers slightly larger signatures but avoids the floating-point sampling complexity of Falcon.
+SPHINCS$^+$ signatures are one to two orders of magnitude larger (up to 29\,792~bytes for SPHINCS$^+$-256s)---a cost that dominates handshake time for suites pairing SPHINCS$^+$ with any KEM.
+
+\subsection{AEAD Data-Plane Cost}
+
+Table~\ref{tab:aead-timing} reports the per-packet AEAD cost for a typical MAVLink payload (\SI{\approx 280}{\byte}).
+
+\begin{table}[t]
+\centering
+\caption{AEAD Per-Packet Cost on RPi4 (averaged over all 72 suites, no-ddos)}
+\label{tab:aead-timing}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{AEAD} & \textbf{Encrypt (ns)} & \textbf{Decrypt (ns)} & \textbf{Power (W)} \\
+\midrule
+ChaCha20-Poly1305 & 71\,441 & 82\,504 & 3.92 \\
+AES-256-GCM & 76\,341 & 83\,982 & 3.94 \\
+Ascon-128a & 1\,374\,916 & 999\,440 & 4.13 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ChaCha20-Poly1305 and AES-256-GCM are within 7\% of each other.
+On the Cortex-A72 without hardware AES-NI, ChaCha20 enjoys a marginal advantage due to its register-friendly ARX operations.
+Ascon-128a is $\sim$19$\times$ slower in encryption and $\sim$12$\times$ slower in decryption, reflecting its pure-Python software implementation (the C native extension requires separate compilation for \texttt{aarch64}).
+The \SI{0.21}{\watt} power premium of Ascon-128a over ChaCha20 is significant on a \SI{4}{\watt} platform.
+
+\subsection{Suite-Level Handshake Results}
+
+Table~\ref{tab:suite-handshake} presents handshake latency for selected suites across all three NIST levels.
+
+\begin{table}[t]
+\centering
+\caption{Selected Suite Handshake Latency (no-ddos, RPi4)}
+\label{tab:suite-handshake}
+\small
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Suite} & \textbf{Level} & \textbf{HS (ms)} \\
+\midrule
+ML-KEM-512 + Falcon-512 + ChaCha20 & L1 & 11.1 \\
+ML-KEM-512 + ML-DSA-44 + AES-GCM & L1 & 15.1 \\
+ML-KEM-768 + ML-DSA-65 + AES-GCM & L3 & 21.3 \\
+ML-KEM-1024 + ML-DSA-87 + AES-GCM & L5 & 21.4 \\
+HQC-128 + ML-DSA-44 + AES-GCM & L1 & 61.4 \\
+HQC-256 + ML-DSA-87 + AES-GCM & L5 & 274.5 \\
+McEliece-348864 + Falcon-512 + AES-GCM & L1 & 376.4 \\
+McEliece-8192128 + ML-DSA-87 + AES-GCM & L5 & 2\,602.0 \\
+McEliece-460896 + SPHINCS$^+$-192s + AES-GCM & L3 & 48\,257.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The fastest suite (ML-KEM-512 + Falcon-512 + ChaCha20-Poly1305) completes a full PQC handshake in \SI{11.1}{\milli\second}---well within MAVLink heartbeat deadlines.
+Even at NIST Level~5, ML-KEM-1024 + ML-DSA-87 achieves \SI{21.4}{\milli\second}, demonstrating that lattice-based PQC is practical for real-time UAV communication.
+
+The slowest suite (Classic-McEliece-460896 + SPHINCS$^+$-192s + AES-GCM) requires \SI{48.3}{\second}---dominated by McEliece's 524~KB public key transfer and SPHINCS$^+$'s 16~KB signature size, causing network transmission delays that dwarf the cryptographic computation.
+
+\subsection{Rekey Overhead Analysis}
+
+Using Equation~\ref{eq:rekey-overhead}, we compute the rekey overhead fraction for representative suites at the default \SI{60}{\second} rekey interval:
+
+\begin{table}[t]
+\centering
+\caption{Rekey Overhead at \SI{60}{\second} Interval}
+\label{tab:rekey-overhead}
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Suite} & $\Phi(\SI{60}{\second})$ \\
+\midrule
+ML-KEM-512 + Falcon-512 + ChaCha20 & 0.018\% \\
+ML-KEM-768 + ML-DSA-65 + AES-GCM & 0.035\% \\
+HQC-256 + ML-DSA-87 + AES-GCM & 0.456\% \\
+McEliece-8192128 + ML-DSA-87 + AES-GCM & 4.156\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ML-KEM-based suites incur negligible rekey overhead ($< 0.04\%$), enabling frequent rekeying for forward secrecy.
+Heavy suites (Classic McEliece) should use longer rekey intervals or be reserved for initial establishment only.
+
+\subsection{DDoS Impact on PQC Performance}
+
+Table~\ref{tab:ddos-impact} compares the reference suite across baseline, XGBoost, and TST phases.
+
+\begin{table}[t]
+\centering
+\caption{DDoS Detector Impact on ML-KEM-768 + ML-DSA-65 + AES-GCM}
+\label{tab:ddos-impact}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Phase} & \textbf{HS (ms)} & \textbf{Power (W)} & \textbf{Temp ($^\circ$C)} & \textbf{Energy (J)} \\
+\midrule
+Baseline & 21.3 & 3.91 & 61.3 & 37.9 \\
+XGBoost & 19.6 & 3.91 & 64.3 & 37.9 \\
+TST & 16.7 & 3.96 & 64.3 & 38.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The XGBoost detector raises the CPU temperature by \SI{3}{\celsius} but does not measurably increase power for this suite.
+The TST detector adds \SI{0.05}{\watt} and \SI{3}{\celsius} to the steady state.
+Handshake times \emph{decrease} slightly in detector phases likely due to CPU cache warming from the sustained detector computation.
+
+The additional power consumption of the detectors---measured at \SI{0.95}{\watt} for XGBoost and \SI{1.97}{\watt} for TST in isolation---is the primary system-level cost.
+This overhead is constant regardless of the PQC suite, making detector management the dominant factor in the scheduler's energy budget.
+
+\subsection{Power and Thermal Behaviour}
+
+\begin{table}[t]
+\centering
+\caption{Power and Temperature Summary Across KEM Families (no-ddos)}
+\label{tab:power-thermal}
+\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{KEM Family} & \textbf{Power (W)} & \textbf{$\sigma$ (W)} & \textbf{Temp ($^\circ$C)} & \textbf{Energy (J)} \\
+\midrule
+ML-KEM & 3.99 & 0.04 & 62.8 & 37.4 \\
+HQC & 4.01 & 0.04 & 62.3 & 37.8 \\
+Classic McEliece & 3.96 & 0.08 & 60.9 & 45.8 \\
+\midrule
+\multicolumn{5}{@{}l}{\textit{Overall: min \SI{3.76}{\watt}, max \SI{4.19}{\watt}, avg \SI{3.99}{\watt}}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Average power consumption is remarkably stable across KEM families (\SI{3.96}{\watt} to \SI{4.01}{\watt}).
+The primary power differentiator is AEAD selection (\SI{3.92}{\watt} for ChaCha20 vs.\ \SI{4.13}{\watt} for Ascon-128a) and detector presence.
+Classic McEliece shows higher energy per suite (\SI{45.8}{\joule} vs.\ \SI{37.4}{\joule} for ML-KEM) due to the longer active time during key generation, despite similar instantaneous power.
+
+\subsection{Scheduler Decision Impact}
+
+The MDEAS scheduler responds to changing conditions along its three axes.
+Table~\ref{tab:scheduler-scenarios} illustrates representative decisions.
+
+\begin{table}[t]
+\centering
+\caption{MDEAS Scheduler Decision Scenarios}
+\label{tab:scheduler-scenarios}
+\small
+\begin{tabular}{@{}p{3.5cm}p{4cm}@{}}
+\toprule
+\textbf{Condition} & \textbf{Action} \\
+\midrule
+Temp $> \SI{80}{\celsius}$ or Battery $< \SI{14}{\volt}$ & EMERGENCY: L1 + cheapest AEAD, kill detector \\
+Temp crossing \SI{70}{\celsius} within \SI{60}{\second} & SWITCH\_AEAD to cooler cipher \\
+DDoS detected (drop ratio $> 0.10$) & EMERGENCY: cheapest AEAD, lock \\
+Detector thermal ceiling exceeded & DOWNGRADE\_DETECTOR \\
+Link gap $p_{95} > \SI{1}{\second}$ & DOWNGRADE\_LEVEL \\
+Stable for \SI{30}{\second} (armed: \SI{90}{\second}) & UPGRADE\_LEVEL \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The AEAD preference order on ARM Cortex-A72 is ChaCha20 $>$ AES-GCM $>$ Ascon-128a, reflecting the lack of hardware AES acceleration and the software overhead of Ascon.
+The scheduler's seeded AEAD cost profiles (Table~\ref{tab:aead-seed}) drive switching decisions without requiring a learning warm-up:
+
+\begin{table}[t]
+\centering
+\caption{AEAD Benchmark-Seeded Cost Profiles}
+\label{tab:aead-seed}
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+\textbf{AEAD} & \textbf{Enc (ns)} & \textbf{Dec (ns)} & $\Delta T$ ($^\circ$C) \\
+\midrule
+ChaCha20-Poly1305 & 63\,500 & 70\,700 & 0.0 \\
+AES-256-GCM & 66\,900 & 73\,600 & $-0.1$ \\
+Ascon-128a & 1\,327\,100 & 960\,500 & $+1.5$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Graceful Degradation}
+
+The scheduler implements graceful degradation through a tiered response.
+When thermal stress is detected, the system first switches AEAD (Axis~1)---the cheapest corrective action affecting per-packet cost.
+If stress persists, it downgrades the NIST level (Axis~2), reducing handshake complexity at the cost of security margin.
+Finally, under sustained overload, it sheds the DDoS detector (Axis~3), freeing the largest block of compute resources (\SI{0.95}--\SI{1.97}{\watt}).
+
+This layered approach ensures that \emph{connectivity is always maintained}: the system never drops to unencrypted operation, but gracefully trades security margin and detection capability for thermal and energy sustainability.
+
+% ============================================================
+% VII. DISCUSSION
+% ============================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\textbf{Why ML-KEM Dominates.}
+ML-KEM (Kyber) achieves sub-millisecond primitive operations across all three security levels~\cite{kyber}, with compact key and ciphertext sizes.
+Combined with ML-DSA~\cite{dilithium}, the fastest L3 suite completes a full PQC handshake in \SI{21.3}{\milli\second}---two orders of magnitude below the MAVLink heartbeat interval (\SI{1}{\second}).
+This makes ML-KEM the clear first choice for UAV deployment.
+
+\textbf{Why Classic McEliece Is Costly.}
+Classic McEliece's security rests on decades-old coding theory~\cite{mceliece}, but its public key sizes (261~KB to 1.3~MB) create network transmission bottlenecks that dominate handshake latency.
+The 48-second handshake for McEliece-460896 + SPHINCS$^+$-192s is unacceptable for real-time UAV operation.
+However, McEliece offers a conservative, structurally distinct security assumption and may serve as a \emph{fallback} KEM for infrequent key establishment in high-security scenarios.
+
+\textbf{Why SPHINCS$^+$ Is Heavy.}
+SPHINCS$^+$ (SLH-DSA)~\cite{sphincsplus} provides hash-based signatures with minimal cryptographic assumptions, but its signatures (7--30~KB) increase both wire overhead and verification time.
+Suites combining SPHINCS$^+$ with any KEM are dominated by the signature cost, as reflected in the per-signature average handshake times exceeding the per-KEM averages.
+
+\textbf{Why AEAD Choice Is Mostly Negligible.}
+At \SI{71}--\SI{84}{\micro\second} per packet, ChaCha20 and AES-GCM contribute less than \SI{0.1}{\milli\second} per MAVLink message.
+The exception is Ascon-128a, which at \SI{1.37}{\milli\second} per encryption approaches the MAVLink inter-packet interval during high telemetry rates.
+This cost difference drives the scheduler's AEAD-axis decisions and motivates future hardware-accelerated Ascon implementations.
+
+\textbf{Why Detector Energy Dominates.}
+The XGBoost detector adds \SI{0.95}{\watt} (24\% of baseline) and TST adds \SI{1.97}{\watt} (49\% of baseline)---costs that exceed the entire variation across all 72 PQC suites.
+This asymmetry means the scheduler's Axis~3 (detector level) has the largest single lever for energy management, justifying its prominent position in the decision cascade.
+
+\textbf{Limitations.}
+Our evaluation uses a single Raspberry Pi~4 under controlled lab conditions.
+Field deployment introduces additional variables: vibration, ambient temperature, battery depletion curves, and multi-path WiFi interference.
+The benchmark runs each suite for \SI{10}{\second}, which captures steady-state costs but may not fully characterise long-running thermal dynamics.
+The SPHINCS$^+$ suite timing includes network transfer of the large signature, which would vary with link bandwidth.
+
+% ============================================================
+% VIII. CONCLUSION AND FUTURE WORK
+% ============================================================
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+We presented \sys{}, a comprehensive post-quantum cryptographic tunnel for MAVLink-based UAV communication.
+The system constructs 72~cryptographic suites from the NIST-level-consistent product of 9~KEMs, 8~digital signatures, and 3~AEAD ciphers.
+A two-message handshake protocol achieves mutual authentication, forward secrecy, and anti-downgrade protection.
+
+Our full-system benchmark on a Raspberry~Pi~4 companion computer demonstrates that lattice-based PQC (ML-KEM + ML-DSA) is immediately deployable, with handshakes completing in \SI{11.1}--\SI{21.3}{\milli\second} at levels L1 through L5.
+HQC provides a code-based alternative at moderate cost (\SI{61}--\SI{275}{\milli\second}).
+Classic McEliece remains viable for infrequent key establishment but is prohibitive for frequent rekeying due to large public keys.
+
+The MDEAS scheduler jointly optimises three axes---AEAD selection, NIST level, and DDoS detector intensity---using real-time telemetry, achieving graceful degradation without disconnection.
+The dominant energy lever is detector management (\SI{0.95}--\SI{1.97}{\watt}), exceeding the variance across all PQC cipher suites.
+
+\textbf{Optimal configurations:}
+\begin{itemize}[noitemsep]
+    \item \textbf{General deployment:} ML-KEM-768 + ML-DSA-65 + ChaCha20-Poly1305 (L3, \SI{21.3}{\milli\second}, \SI{3.91}{\watt}).
+    \item \textbf{Minimum latency:} ML-KEM-512 + Falcon-512 + ChaCha20-Poly1305 (L1, \SI{11.1}{\milli\second}).
+    \item \textbf{Maximum security:} ML-KEM-1024 + ML-DSA-87 + AES-256-GCM (L5, \SI{21.4}{\milli\second}).
+    \item \textbf{Conservative:} Classic-McEliece-348864 + Falcon-512 + AES-GCM (L1, structurally diverse, \SI{376}{\milli\second}).
+\end{itemize}
+
+\textbf{Future Work.}
+Several directions emerge:
+(1)~\emph{Reinforcement Learning Scheduling}: replacing the rule-based MDEAS with an RL agent that learns optimal policies from flight data.
+(2)~\emph{Hardware-Accelerated Ascon}: leveraging dedicated Ascon hardware~\cite{ascon} to close the $19\times$ software gap with AES-GCM.
+(3)~\emph{Multi-Drone Swarms}: extending the tunnel to mesh topologies with group key management.
+(4)~\emph{Formal Verification}: proving the handshake protocol correct using symbolic model checking (e.g., ProVerif).
+(5)~\emph{Hybrid PQC-Classical Modes}: combining classical ECDH with PQC KEM for defense-in-depth during the transition period.
+
+% ============================================================
+% REFERENCES
+% ============================================================
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{35}
+
+\bibitem{nist-fips203}
+National Institute of Standards and Technology, ``FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism Standard (ML-KEM),'' NIST, Gaithersburg, MD, Aug. 2024.
+
+\bibitem{nist-fips204}
+National Institute of Standards and Technology, ``FIPS 204: Module-Lattice-Based Digital Signature Standard (ML-DSA),'' NIST, Gaithersburg, MD, Aug. 2024.
+
+\bibitem{nist-fips205}
+National Institute of Standards and Technology, ``FIPS 205: Stateless Hash-Based Digital Signature Standard (SLH-DSA),'' NIST, Gaithersburg, MD, Aug. 2024.
+
+\bibitem{nist-round4}
+National Institute of Standards and Technology, ``Status Report on the Fourth Round of the NIST Post-Quantum Cryptography Standardization Process,'' NIST IR 8545, 2024.
+
+\bibitem{kyber}
+R. Avanzi, J. Bos, L. Ducas, E. Kiltz, T. Lepoint, V. Lyubashevsky, J.~M. Schanck, P. Schwabe, G. Seiler, and D. Stehl{\'e}, ``CRYSTALS-Kyber: A CCA-secure module-lattice-based KEM,'' in \emph{Proc. IEEE European Symposium on Security and Privacy (EuroS\&P)}, 2018, pp.~353--367.
+
+\bibitem{dilithium}
+L. Ducas, E. Kiltz, T. Lepoint, V. Lyubashevsky, P. Schwabe, G. Seiler, and D. Stehl{\'e}, ``CRYSTALS-Dilithium: A lattice-based digital signature scheme,'' \emph{IACR Trans. Cryptographic Hardware and Embedded Systems (TCHES)}, vol.~2018, no.~1, pp.~238--268, 2018.
+
+\bibitem{falcon}
+P.-A. Fouque, J. Hoffstein, P. Kirchner, V. Lyubashevsky, T. Pornin, T. Prest, T. Ricosset, G. Seiler, W. Whyte, and Z. Zhang, ``Falcon: Fast-Fourier lattice-based compact signatures over NTRU,'' NIST PQC Round~3 Submission, 2020.
+
+\bibitem{sphincsplus}
+D.~J. Bernstein, A. H{\"u}lsing, S. K{\"o}lbl, R. Niederhagen, J. Rijneveld, and P. Schwabe, ``The SPHINCS$^+$ signature framework,'' in \emph{Proc. ACM SIGSAC Conference on Computer and Communications Security (CCS)}, 2019, pp.~2129--2146.
+
+\bibitem{hqc}
+C. Aguilar Melchor, N. Aragon, S. Bettaieb, L. Bidoux, O. Blazy, J.-C. Deneuville, P. Gaborit, E. Persichetti, G. Z{\'e}mor, and I.~C. Bos, ``Hamming Quasi-Cyclic (HQC),'' NIST PQC Round~4 Submission, 2023.
+
+\bibitem{mceliece}
+D.~J. Bernstein, T. Chou, T. Lange, I. von Maurich, R. Misoczki, R. Niederhagen, E. Persichetti, C. Peters, P. Schwabe, N. Sendrier, J. Szefer, and W. Wang, ``Classic McEliece: Conservative code-based cryptography,'' NIST PQC Round~4 Submission, 2023.
+
+\bibitem{ascon}
+C. Dobraunig, M. Eichlseder, F. Mendel, and M. Schl{\"a}ffer, ``Ascon v1.2: Lightweight authenticated encryption and hashing,'' \emph{J. Cryptology}, vol.~34, no.~3, 2021.
+
+\bibitem{rfc5869}
+H. Krawczyk and P. Eronen, ``HMAC-based Extract-and-Expand Key Derivation Function (HKDF),'' RFC~5869, Internet Engineering Task Force, May 2010.
+
+\bibitem{rfc8439}
+Y. Nir and A. Langley, ``ChaCha20 and Poly1305 for IETF Protocols,'' RFC~8439, Internet Engineering Task Force, Jun. 2018.
+
+\bibitem{rfc5288}
+J. Salowey, A. Choudhury, and D. McGrew, ``AES Galois Counter Mode (GCM) cipher suites for TLS,'' RFC~5288, Internet Engineering Task Force, Aug. 2008.
+
+\bibitem{rfc2104}
+H. Krawczyk, M. Bellare, and R. Canetti, ``HMAC: Keyed-Hashing for Message Authentication,'' RFC~2104, Internet Engineering Task Force, Feb. 1997.
+
+\bibitem{shor1994}
+P.~W. Shor, ``Algorithms for quantum computation: Discrete logarithms and factoring,'' in \emph{Proc. 35th Annual Symposium on Foundations of Computer Science (FOCS)}, IEEE, 1994, pp.~124--134.
+
+\bibitem{grover1996}
+L.~K. Grover, ``A fast quantum mechanical algorithm for database search,'' in \emph{Proc. 28th Annual ACM Symposium on Theory of Computing (STOC)}, 1996, pp.~212--219.
+
+\bibitem{dolev1983security}
+D. Dolev and A.~C. Yao, ``On the security of public key protocols,'' \emph{IEEE Trans. Inf. Theory}, vol.~29, no.~2, pp.~198--208, 1983.
+
+\bibitem{liboqs}
+D. Stebila and M. Mosca, ``Open Quantum Safe,'' \url{https://openquantumsafe.org}, 2024. [Online; accessed Feb. 2026].
+
+\bibitem{oqspython}
+Open Quantum Safe Project, ``liboqs-python: Python~3 wrapper for liboqs,'' \url{https://github.com/open-quantum-safe/liboqs-python}, 2024.
+
+\bibitem{cryptography-lib}
+Python Cryptographic Authority, ``cryptography: Cryptographic recipes and primitives for Python,'' \url{https://cryptography.io}, 2024.
+
+\bibitem{pqm4}
+M.~J. Kannwischer, J. Rijneveld, P. Schwabe, and K. Stoffelen, ``pqm4: Testing and benchmarking NIST PQC on ARM Cortex-M4,'' \emph{IACR Cryptology ePrint Archive}, Report 2019/844, 2019.
+
+\bibitem{pqc-arm-bench}
+F. Schmid, T. Unterluggauer, and S. Mangard, ``Post-quantum cryptography on ARM Cortex-A: Benchmarking NIST PQC candidates,'' in \emph{Proc. Design, Automation and Test in Europe Conference (DATE)}, 2023, pp.~1--6.
+
+\bibitem{pqc-tls-bench}
+C. Paquin, D. Stebila, and G. Tamvada, ``Benchmarking post-quantum cryptography in TLS,'' in \emph{Proc. Post-Quantum Cryptography (PQCrypto)}, Springer LNCS, 2020, pp.~72--91.
+
+\bibitem{rosenpass}
+W. Horn, K. Kanning, and B. Lipp, ``Rosenpass: Post-quantum secure VPN,'' \url{https://rosenpass.eu}, 2023.
+
+\bibitem{pqc-vpn}
+A. H{\"u}lsing, K.-K. Ning, P. Schwabe, and F. Weber, ``Post-quantum WireGuard: Practical post-quantum VPN,'' in \emph{Proc. IEEE Symposium on Security and Privacy (SP)}, 2021, pp.~304--321.
+
+\bibitem{drone-security-survey}
+R. Altawy and A.~M. Youssef, ``Security, privacy, and safety aspects of civilian drones: A survey,'' \emph{ACM Trans. Cyber-Physical Systems}, vol.~1, no.~2, pp.~1--25, 2017.
+
+\bibitem{drone-pqc-analysis}
+N.~K. Pham and M. Vakilinia, ``Post-quantum cryptography analysis for UAV communication systems,'' in \emph{Proc. IEEE Int. Conf. on Communications (ICC)}, 2023, pp.~1--6.
+
+\bibitem{mavlink-spec}
+MAVLink Developer Team, ``MAVLink protocol specification v2.0,'' \url{https://mavlink.io/en/}, 2024.
+
+\bibitem{mavproxy}
+ArduPilot Developer Team, ``MAVProxy: A UAV ground station software package for MAVLink-based systems,'' \url{https://ardupilot.github.io/MAVProxy/}, 2024.
+
+\bibitem{ardupilot}
+ArduPilot Developer Team, ``ArduPilot: Versatile, trusted, open autopilot software,'' \url{https://ardupilot.org}, 2024.
+
+\bibitem{ina219}
+Texas Instruments, ``INA219: Bidirectional current/power monitor with I$^2$C interface,'' Datasheet SBOS448G, 2024.
+
+\bibitem{pixhawk}
+Holybro, ``Pixhawk 6C Mini: Open-source autopilot for drones,'' \url{https://holybro.com/products/pixhawk-6c-mini}, 2024.
+
+\bibitem{cicids2017}
+I. Sharafaldin, A.~H. Lashkari, and A.~A. Ghorbani, ``Toward generating a new intrusion detection dataset and intrusion traffic characterization,'' in \emph{Proc. Int. Conf. on Information Systems Security and Privacy (ICISSP)}, 2018, pp.~108--116.
+
+\bibitem{tst-ids}
+H. Zhang, L. Yu, and X. Chen, ``Transformer-based network intrusion detection with temporal attention,'' \emph{IEEE Trans. Information Forensics and Security}, vol.~18, pp.~2035--2049, 2023.
+
+\bibitem{nist-sp800-131a}
+E. Barker and A. Roginsky, ``Transitioning the use of cryptographic algorithms and key lengths,'' NIST SP 800-131A Rev.~2, Mar. 2019.
+
+\end{thebibliography}
+
+\end{document}

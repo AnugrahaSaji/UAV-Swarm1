@@ -1,0 +1,140 @@
+Audit findings for secure-tunnel workspace
+Generated: 2025-12-21
+
+---
+File: bench_models.py
+Path: bench_models.py
+Role: Lightweight stub providing a power prediction helper for automation.
+Key symbols: calculate_predicted_flight_constraint(horizontal_mps, vertical_mps, weight_n)
+Inputs: numeric speed and weight; Outputs: float power estimate (watts).
+Observations: Simple, defensive conversion to float; returns 0.0 on parse error.
+Issues/Risks: None significant. Function is intentionally approximate and safe.
+Severity: Low
+Suggestion: None — acceptable as a test stub.
+
+---
+File: core/config.py
+Path: core/config.py
+Role: Central configuration and validation for runtime and crypto parameters.
+Key symbols: CONFIG dict, validate_config(), _apply_env_overrides()
+Inputs: environment variables and built-in defaults; Outputs: validated CONFIG mapping and raises ConfigError on violations.
+Observations:
+- Comprehensive validation (ports, types, ranges, host IPs, DRONE_PSK checks).
+- ENV overrides supported and parsed carefully.
+- Defaults enable Ascon tokens and keep many dev-friendly defaults.
+Issues/Risks:
+- DRONE_PSK default is empty and validation only enforces presence when ENV != 'dev' — risk of accidental insecure deployments if ENV not set correctly.
+- Several env-override keys are allowed but raising ConfigError for unsupported key in _apply_env_overrides may crash if new envs are present; this is intentional but must be documented for operators.
+- Host validation uses ip_address() rejecting hostnames; some lab setups may expect hostnames.
+Severity: Medium (configuration mistakes can lead to insecure deployments)
+Suggestions:
+- Document requirement to set ENV=production (or similar) and the mandatory DRONE_PSK injection in ops README.
+- Consider safer default for ENV handling or explicit production mode flag.
+
+---
+File: core/run_proxy.py
+Path: core/run_proxy.py
+Role: CLI entrypoint and high-level runner for drone/GCS proxies and identity management.
+Key symbols: main(), gcs_command(), drone_command(), _build_matrix_secret_loader/_public_loader
+Inputs: CLI args, filesystem secrets under `secrets/`, CONFIG; Outputs: starts proxy_runner and persists logs/status JSON.
+Observations:
+- Robust fallback handling for oqs key import/export API differences.
+- Ephemeral key option for development but with clear warnings.
+- JSON status writing attempts atomic write using tmp file; handles Windows quirks.
+Issues/Risks:
+- init_identity uses Signature(suite['sig_name']) then expects export_secret_key()/generate_keypair() — code handles various oqs builds but fallback messaging may confuse operators.
+- Danger: public/secret key files are written with minimal permission hardening on Windows (os.chmod best-effort only). On multi-user hosts this could be insufficient.
+Severity: Medium
+Suggestions:
+- Document key file permissions and recommend secure storage/backups.
+- Add optional integration with OS keystores or platform-specific guidance for Windows.
+
+---
+File: core/handshake.py
+Path: core/handshake.py
+Role: Implements PQC handshake (server hello, sign/verify, KEM encaps/decap), key derivation, and PSK-based authentication tag for drone->GCS.
+Key symbols: build_server_hello(), parse_and_verify_server_hello(), client_encapsulate(), server_decapsulate(), derive_transport_keys(), server_gcs_handshake(), client_drone_handshake()
+Inputs: socket streams (TCP), oqs primitives, DRONE_PSK env, suite dict; Outputs: symmetric transport keys, session_id, handshake metrics.
+Observations:
+- Proper signature verification enforced on drone (parse_and_verify_server_hello) — no bypass paths seen.
+- HKDF with SHA-256 used for key derivation, with explicit salt and info strings.
+- HMAC tag for drone auth uses DRONE_PSK over server_hello; server checks tag with compare_digest.
+- Metrics collection is thorough and defensive.
+Issues/Risks:
+- DRONE_PSK handling: env var lookup uses "DRONE_PSK" or CONFIG value; if empty in dev, tag becomes all-zero? (server computes expected_tag = hmac.new(_drone_psk_bytes(), hello_wire,...). If psk empty bytes then HMAC over empty key is valid but insecure.) This is acceptable for dev but must be prevented in production.
+- Key sizes and type checks enforced but exceptions raised are sometimes generic (RuntimeError) — could be more specific.
+- Potential resource cleanup: kem objects and signature objects call .free where available — good but rely on optional oqs API presence.
+Severity: High (cryptographic handshake core; PSK misconfiguration can be critical)
+Suggestions:
+- Enforce non-empty PSK when ENV!=dev and add clear runtime error if PSK is empty in production.
+- Add runtime check/logging when empty PSK is detected (in dev) to avoid accidental promotion.
+
+---
+File: core/async_proxy.py
+Path: core/async_proxy.py
+Role: Selector-based UDP proxy bridging plaintext↔encrypted, performing handshakes and in-band rekey control.
+Key symbols: run_proxy(), _perform_handshake(), _setup_sockets(), _build_sender_receiver(), ProxyCounters
+Inputs: suite, CONFIG, loaded keys, sockets; Outputs: bridged UDP traffic, status files, counters.
+Observations:
+- Uses deterministic IV construction (epoch||seq) and omits IV on wire to save bytes; receiver reconstructs IV.
+- Replay window and sequence anti-replay implemented in Receiver._check_replay with bitmask sliding window.
+- Control-plane (0x02) supports two-phase commit with prepare/commit/commit_rekey flows.
+- Strict peer/source IP matching and rate-limiting for handshake implemented.
+Issues/Risks:
+- The optimized omission of IV from wire is OK but requires careful epoch/seq handling; SequenceOverflow and epoch wrap checks exist but operators must monitor rekey thresholds.
+- Peer IP strictness (STRICT_HANDSHAKE_IP, STRICT_UDP_PEER_MATCH) default True — safe but may break NAT/testbeds; code warns accordingly.
+- Potential DoS risk: token bucket in accept loop has prune logic but unbounded seen dict could grow if many IPs connect; prune exists but ensure values configured.
+- A few catch-all excepts may obscure root causes in production logs.
+Severity: High (data-plane and replay/auth enforcement central to security/availability)
+Suggestions:
+- Add operational monitoring/alerts for sequence exhaustion and epoch wrap proximity.
+- Consider bounded memory caps/metrics for token-bucket seen map and explicit logging when pruning triggers.
+
+---
+File: core/aead.py
+Path: core/aead.py
+Role: AEAD framing primitives, Sender/Receiver, Ascon adapter, and anti-replay logic.
+Key symbols: Sender.encrypt(), Receiver.decrypt(), _instantiate_aead(), _AsconAdapter
+Inputs: keys, plaintext/ciphertext, header AAD; Outputs: ciphertext or plaintext and exceptions on failure.
+Observations:
+- Supports AES-GCM, ChaCha20-Poly1305, and Ascon (native or pyascon). Key size checks enforced.
+- Deterministic IV derived from epoch||seq with nonce reconstruction — reduces wire overhead.
+- Replay window requires window >= 64 and uses 1<<window mask; correct masking applied.
+Issues/Risks:
+- Deterministic IVs are safe if never reused; the code prevents wrap-around by forbidding epoch wrap and providing SequenceOverflow, but the enormous default threshold (1<<63) may mask operator-unnoticed long-term reuse risk.
+- _AsconAdapter falls back to pyascon or native; if neither present _instantiate_aead raises ImportError — callers must handle.
+- HEADER_STRUCT uses a fixed struct format; ensure alignment across platforms.
+Severity: High
+Suggestions:
+- Provide runtime monitoring of `seq` and a safe, operational threshold (e.g., configurable lower default) to prompt rekey well before IV exhaustion.
+- Document requirement for Ascon native module for high-performance/MTU use-cases.
+
+---
+File: core/policy_engine.py
+Path: core/policy_engine.py
+Role: In-band control state machine handling prepare/commit/status messages and coordinator logic.
+Key symbols: ControlState, request_prepare(), handle_control(), record_rekey_result()
+Observations:
+- Two-phase commit-style flow implemented with safe guards and seen_rids to avoid replay of control messages.
+- Thread-safe with locks and outbox queue for outbound control messages.
+Issues/Risks:
+- state.seen_rids has maxlen=256; under high churn this may re-accept older rids — acceptable tradeoff but should be documented.
+- No signature/authentication on control messages; control-plane is protected by encrypted AEAD and (optionally) ENABLE_PACKET_TYPE — this is OK but worth calling out.
+Severity: Medium
+Suggestions:
+- Consider optional signed control messages or stronger ordering guarantees for noisy networks.
+
+---
+File: tools/power_utils.py
+Path: tools/power_utils.py
+Role: Utilities to parse CSV power traces and integrate energy for analysis.
+Key symbols: load_power_trace(), integrate_energy_mj(), PowerSample dataclass
+Observations:
+- Robust header detection and tolerant parsing of voltage/current vs power columns.
+- Trapezoidal integration used for energy calculation.
+Issues/Risks: None notable. Handles missing data and sorts chronologically.
+Severity: Low
+Suggestions: None
+
+---
+Progress: Initial traversal and analysis of key modules complete. Next: iterate remaining files (auto/*, core/* extras, secrets, tools, tests), append findings, map flows, and produce final recommendations.

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAV Security Dashboard</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+            color: #333;
+            text-align: center;
+        }
+
+        h1 {
+            color: #004080;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        select,
+        input {
+            margin-bottom: 10px;
+        }
+
+        #graphs {
+            display: flex;
+            justify-content: space-around
+        }
+
+        canvas {
+            border: 1px solid #ccc;
+            margin: 10px;
+            width: 50px;
+            /* Fixed width */
+            height: 50px;
+            /* Fixed height */
+            flex-grow: 0;
+            /* Do not allow stretching */
+        }
+    </style>
+</head>
+
+<body>
+    <h1>UAV Security Dashboard</h1>
+
+    <label for="flagSelect">Select Flag:</label>
+    <select id="flagSelect" onchange="updateFlag()">
+        <option value="0">Benign</option>
+        <option value="1">Malicious</option>
+    </select>
+
+    <div id="Change Status"></div>
+
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function updateFlag() {
+            var selectedValue = document.getElementById("flagSelect").value;
+            fetchDataAndUpdate(selectedValue);
+        }
+
+        function updateLookback() {
+            var lookbackValue = document.getElementById("lookbackInput").value;
+            fetchDataAndUpdate(lookback = lookbackValue);
+        }
+
+        function updateWindowSize() {
+            var windowSizeValue = document.getElementById("windowSizeInput").value;
+            fetchDataAndUpdate(windowSize = windowSizeValue);
+        }
+
+        function fetchDataAndUpdate(flag = null, lookback = null, windowSize = null) {
+            var endpoint = `/update-parameters?flag=${flag}`;
+
+            fetch(endpoint)
+                .then(response => response.json())
+                .then(data => {
+                    // Assuming the response has a 'timestamp' property
+                    var timestamp = data.timestamp;
+
+                    // Display the label on the page
+                    displayTimestamp(timestamp);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function displayTimestamp(timestamp) {
+            // Assuming you have an element with the id 'timestamp' to display the timestamp
+            var timestampElement = document.getElementById('Change Status');
+
+            // Update the innerHTML of the timestamp element
+            if (timestampElement) {
+                timestampElement.innerHTML = "Change At: " + timestamp;
+            }
+        }
+
+        function updateGraphs() {
+            // Periodically fetch live data and update the graphs
+            fetch('/live')
+                .then(response => response.json())
+                .then(data => {
+                    updateChart('packetRateChart', 'Packet Rate', data.packet_rate);
+                    updateChart('stateChart', 'State', data.state);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function updateChart(chartId, label, data) {
+            var ctx = document.getElementById(chartId).getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: data.length }, (_, i) => i + 1),
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: 'blue',
+                        borderWidth: 1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom'
+                        },
+                        y: {
+                            min: 0
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,19 @@
+[Unit]
+Description=UAV Swarm Ground Control Station (GCS) Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/secure-tunnel-main
+Environment="TUNNEL_HOST_PROFILE=lan"
+Environment="GCS_HOST=192.168.0.100"
+Environment="DRONE1_HOST=192.168.0.101"
+Environment="DRONE2_HOST=192.168.0.106"
+ExecStart=/usr/bin/python3 -m sscheduler.sgcs
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

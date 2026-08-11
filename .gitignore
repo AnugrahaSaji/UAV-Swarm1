@@ -1,0 +1,123 @@
+# Large archives
+*.zip
+*.rar
+*.7z
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node.js
+node_modules/
+
+# Environment/secrets
+.env
+.env.*
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Environment files — .denv/.genv are tracked templates,
+# .local overrides contain site-specific secrets and must NOT be committed.
+.denv.local
+.genv.local
+
+# Bytecode & caches (explicit)
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+
+# Logs
+logs/
+*.log
+*.err
+*.json
+
+# Explicitly ignore large telemetry file
+logs/gcs_telemetry/gcs_telemetry_v1.jsonl
+
+# Temporary workspace artifacts
+tmp/archive/
+tmp/_tmp*/
+tmp/_tmp*
+tmp/* copy.py
+tmp/*.bak
+dump/
+
+# Ignore MAV logs
+*.tlog
+*.tlog.raw
+
+# Benchmark outputs (generated artifacts)
+benchmarks/
+bench_results_*/
+bench_analysis/
+power_analysis/
+benchmark_book/
+
+# LaTeX build artifacts (benchmark reports)
+**/*.aux
+**/*.bbl
+**/*.bcf
+**/*.blg
+**/*.fls
+**/*.out
+**/*.run.xml
+**/*.synctex.gz
+**/*.toc
+
+# Large bundle files
+*.bundle
+
+# Large files (>50MB)
+uav-camera/ddos/models/rf_model.pkl
+ddos/ddos-old/detection/Preprocessing/Data/combined/train/attack_2.csv
+*.pkl
+
+# Large dataset files (>100MB GitHub limit)
+ddos/data/CICIoT2023_xxsmall.csv
+
+# Generated native crypto libraries
+core/libasconaead128.dll
+core/libasconaead128.so
+core/libasconaead128.dylib
+core/_ascon_native*.so
+core/_ascon_native*.pyd
+core/_ascon_native*.bak
+
+# Generated temporary suite identities for localhost benchmarks
+tmp_suite_keys/
+
+# Local backup files
+**/*.bak.*
+sscheduler/*.bak.*
+
+# Allow committing small direct MAV bench status snapshots
+!mav-bench-direct/*.json
+
+# Local scratch
+.tmp/
+
+# Allow tracked JSON templates
+!docs/lab-context.template.json
+
+# Secrets (must never be committed)
+secrets/matrix/
+secrets/**/gcs_signing.sec
+secrets/**/gcs_signing.key
+
+# Temp patch artifacts
+tmp_ephemeral_retry.patch

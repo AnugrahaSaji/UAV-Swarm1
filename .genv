@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .genv — GCS (Ground Control Station) Environment Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# All GCS-side network, SSH, and runtime values that vary per deployment.
+# Loaded by core/config.py at startup — keeps secrets and machine-specific
+# addresses out of source control.
+#
+# Copy this file to .genv.local for site overrides (git-ignored).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Network Addresses ────────────────────────────────────────────────────────
+# LAN IP for data/control/telemetry planes
+GCS_HOST_LAN=192.168.0.100
+TUNNEL_HOST_PROFILE=lan
+# Tailscale IP — SSH/Git maintenance ONLY
+GCS_HOST_TAILSCALE=100.106.181.122
+
+# ── Lab Credentials ──────────────────────────────────────────────────────────
+# Lab password for drone SFTP/SSH access (post-fetch, power-fetch).
+# REQUIRED in production — no default fallback.
+PQC_LAB_PASSWORD=
+# Alternative passwords for specific fetch pipelines
+AUTO_GCS_POST_FETCH_PASSWORD=
+AUTO_GCS_POWER_FETCH_PASSWORD=
+
+# ── Ports (overrides for non-standard deployments) ───────────────────────────
+# UDP_GCS_RX=46011
+# GCS_CONTROL_PORT=48080
+# MAV_GCS_IN_PORT_1=14550
+# MAV_GCS_IN_PORT_2=14551
+
+# ── Dashboard ────────────────────────────────────────────────────────────────
+DASHBOARD_BACKEND_PORT=8000
+DASHBOARD_FRONTEND_PORT=5173
+
+# ── MAVProxy Auth ────────────────────────────────────────────────────────────
+# HMAC key for scheduler control channels (empty = disabled)
+MAV_AUTH_KEY=

@@ -1,0 +1,258 @@
+CLAUDE OPUS 4.6 MASTER CHALLENGE PROMPT
+UAV SECURE TUNNEL - PRODUCTION GRADE CONTROL PLANE + DATA PLANE HARDENING
+
+A) ROLE, EXECUTION CONTRACT, AND SUCCESS BAR
+You are an elite embedded security engineer, protocol designer, post-quantum cryptography analyst, and systems reliability lead.
+
+Your job is to finish and harden a real UAV secure MAV tunnel implementation with production-level quality.
+
+This is not a brainstorming task.
+This is not a documentation-only task.
+This is an execution-and-verification task.
+
+Operate under these constraints:
+1. Evidence-first only.
+2. No assumptions, no imagined behavior, no fabricated success.
+3. Root cause before patching symptoms.
+4. Security invariants before performance optimization.
+5. Deterministic reproducibility before final claims.
+
+Success bar:
+1. Control plane is deterministic and safe under concurrency.
+2. Data plane is cryptographically correct with explicit anti-replay and drop taxonomy.
+3. Startup and key lifecycle failures are classified and resolved or isolated with proof.
+4. Full benchmark artifacts are generated and machine-classified.
+
+
+B) REAL OPERATING ENVIRONMENT AND HARDWARE REALITY
+Treat this as a real hardware project, not simulation:
+1. Raspberry Pi target access:
+  - ssh dev@100.101.93.23
+2. Project path on Pi:
+  - cd secure-tunnel
+3. Crypto environment on Pi:
+  - source ~/cenv/bin/activate
+4. DDoS environment exists but is out-of-scope for this phase:
+  - ~/nenv
+5. Local workstation environment:
+  - conda environment oqs-dev
+6. MAVProxy is wired to real Pixhawk.
+7. No simulation shortcuts, no synthetic assumptions unless explicitly marked and justified.
+
+Phase scope policy:
+1. Implement in core/.
+2. Read and map sscheduler/ deeply for integration contracts and protocol compatibility.
+3. Do not expand DDoS features in this phase.
+
+
+C) STRATEGIC OBJECTIVE IN BROADER CONTEXT
+Build best-in-class secure tunnel foundations for UAV and reusable application transport.
+
+Target capabilities:
+1. Authenticated handshake with PQC agility.
+2. Robust AEAD data plane with replay resistance.
+3. Deterministic and auditable control-plane transitions.
+4. Safe rekey handling across:
+  - same suite rekey
+  - different suite same NIST level
+  - different level transition L1/L3/L5
+  - AEAD-only shift path
+5. Comprehensive observability with counters, status files, structured logs, and benchmark artifacts.
+
+
+D) STANDARDS MAPPING TARGET
+Use and cite these references while auditing and implementing:
+1. RFC 8446 TLS 1.3
+2. RFC 9147 DTLS 1.3
+3. RFC 9001 QUIC key phase and update lessons
+4. RFC 9180 HPKE context binding principles
+5. FIPS 203 ML-KEM
+6. FIPS 204 ML-DSA
+7. FIPS 205 SLH-DSA
+8. NIST SP 800-56C key derivation and key schedule
+9. NIST SP 800-57 key management lifecycle
+10. NIST SP 800-38 series AEAD/mode guidance
+
+Precision note:
+There is no official TLS 1.4 RFC.
+Interpret TLS 1.4 alignment as future-ready hardening posture built on TLS 1.3 and DTLS 1.3 semantics.
+
+
+E) KNOWN PROJECT STATUS TO START FROM
+Current known outcomes:
+1. Localhost persistent sweep indicates 24 total suites with 3 pass and 21 fail.
+2. Dominant failed classes are startup/key lifecycle failures, not broad data-plane breakage.
+3. Rekey strict single-flight controls were introduced.
+4. Suite fallback behavior was tightened.
+5. Ephemeral harness supports partial summary write on interruption.
+
+Seed evidence files:
+1. logs/localhost_handshake_sweep/summary.json
+2. logs/localhost_handshake_sweep_ephemeral/summary.json
+3. LOCALHOST_E2E_ISSUES_AND_STRATEGY.md
+4. CORE_IMPLEMENTATION_NARRATIVE_AND_BUG_AUDIT.md
+
+
+F) MANDATORY CONTEXT INGESTION BEFORE ANY MAJOR CHANGE
+You must parse every Python file in these folders before deciding architecture changes:
+1. core/*.py
+2. sscheduler/*.py
+
+For every file, capture:
+1. role and ownership
+2. control/data flow boundaries
+3. state variables and mutation points
+4. security-sensitive operations
+5. external process/network coupling
+6. potential race and failure surfaces
+
+Produce both maps before implementation:
+1. Micro map: file-by-file responsibilities and dependencies
+2. Macro map: end-to-end flow from scheduler intent to control packet to proxy state transition to encrypted data-plane effect
+
+
+G) PROTOCOL AND INTEGRATION AUDIT CHECKLIST
+You must explicitly verify all items below.
+
+G1) Control-plane correctness
+1. prepare_rekey, prepare_ok, prepare_fail, commit_rekey, status semantics
+2. coordinator role authority and enforcement
+3. RID uniqueness, replay rejection, duplicate handling
+4. epoch monotonicity and rollback rejection
+5. overlap and in-flight rekey behavior
+6. failure accounting consistency
+
+G2) Rekey taxonomy and wiring
+For each rekey type, provide trigger, state transition path, and expected side effects:
+1. same suite rekey
+2. different suite same level
+3. different level transition
+4. AEAD-only shift
+
+G3) Handshake and identity lifecycle
+1. startup secret/public loading path
+2. persistent key import path and failure classes
+3. ephemeral key path behavior on Windows and Linux
+4. signer/public consistency self-test semantics
+5. key confirmation and transcript binding integrity
+
+G4) Data-plane invariants
+1. packet framing and authenticated fields
+2. nonce derivation and uniqueness discipline
+3. replay window behavior and session/epoch coupling
+4. drop counters and exact class semantics
+5. blackout behavior and recovery
+
+G5) Scheduler integration contracts
+Read sscheduler as contract boundary even if core is implementation target:
+1. command schema expected by follower and controller
+2. suite tiering assumptions
+3. cooldown and rekey pacing assumptions
+4. telemetry-driven decision hooks
+5. mismatch risks between scheduler assumptions and core runtime behavior
+
+
+H) MISSING-GAP HARDENING REQUIREMENTS TO INCLUDE
+If absent, add these requirements to implementation and reports:
+1. Stable machine-readable failure category in status artifacts for startup aborts.
+2. Distinct classification between startup failure and protocol failure.
+3. Explicit downgrade-protection checks and logs.
+4. Strict no-silent-fallback policy for security-sensitive selection.
+5. Cross-platform safe logging output for terminal encodings.
+6. Idempotent benchmark harness behavior with interruption-safe summary persistence.
+7. Command reproducibility block for each benchmark result.
+8. Rollback-safe implementation plan for any risky refactor.
+9. Clear threat model summary for control channel and data channel.
+10. Residual-risk register with exploitability and mitigation.
+
+
+I) REQUIRED EXECUTION PHASES (STRICT ORDER)
+Phase 0: Full context scan
+1. Visit each core and sscheduler Python file.
+2. Build micro and macro context maps.
+
+Phase 1: Control-plane formal audit
+1. State machine extraction and transition table.
+2. Race and overlap analysis.
+
+Phase 2: Handshake and lifecycle audit
+1. Persistent and ephemeral startup paths.
+2. Identity consistency and key import behavior.
+
+Phase 3: Data-plane audit
+1. Crypto framing, replay, and drop taxonomy verification.
+
+Phase 4: Root-cause fixes
+1. Apply minimal high-leverage secure fixes.
+2. Validate static and runtime impact.
+
+Phase 5: Benchmark closure
+1. Run full persistent suite sweep.
+2. Run full ephemeral suite sweep.
+3. Produce full suite-by-suite root cause classification.
+
+Phase 6: Final hardening verdict
+1. Standards alignment matrix.
+2. Residual risk table.
+3. Go or no-go recommendation.
+
+
+J) BENCHMARK CLASSIFICATION TAXONOMY (MANDATORY)
+Every suite must end in one primary class:
+1. pass
+2. startup-keyload-fail
+3. identity-mismatch-fail
+4. handshake-verify-fail
+5. transport-connect-fail
+6. control-plane-transition-fail
+7. interrupted
+
+Optional secondary class may be added but primary class is mandatory.
+
+
+K) REQUIRED OUTPUT ARTIFACTS
+You must produce all of these:
+1. Code patch set with rationale and security notes.
+2. Control-plane transition matrix.
+3. Rekey type matrix including same suite, same level, different level, and AEAD-only shift.
+4. Standards alignment matrix:
+  - standard reference
+  - current implementation behavior
+  - compliance/gap
+  - proposed or applied fix
+  - residual risk
+5. Persistent and ephemeral benchmark tables with artifact paths.
+6. Top 10 residual risks with severity and exploitability.
+7. Final go/no-go recommendation.
+
+
+L) REPORTING RULES
+1. Findings first, severity ordered.
+2. Each major claim must cite code location and runtime artifact.
+3. Mark each finding as confirmed, likely, or unknown.
+4. Unknown must include exact next test needed.
+5. Never merge startup failures into protocol-failure counts.
+
+
+M) ANTI-PATTERN BAN LIST
+Do not do any of the following:
+1. Claim protocol failure when startup aborted first.
+2. Hide failures behind retries without classification.
+3. Introduce silent downgrade or silent fallback behavior.
+4. Inflate benchmark success by skipping failed startup cases.
+5. Modify scheduler deeply in this phase unless needed to preserve core contract correctness.
+
+
+N) DEFINITION OF DONE
+Done only when all are true:
+1. Core control-plane and data-plane invariants are validated and documented.
+2. Full benchmark outcomes are reproducible and fully classified.
+3. Root causes are fixed or isolated with concrete next actions.
+4. Standards mapping and residual risk reporting are complete.
+5. No critical ambiguity remains in implementation or protocol behavior.
+
+
+O) HARD DIRECTIVE
+Do not stop at analysis.
+Implement, verify, benchmark, classify, and conclude with evidence.
+Operate as if this will be externally audited for production deployment.

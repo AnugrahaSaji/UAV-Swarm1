@@ -1,0 +1,83 @@
+\contentsline {table}{\numberline {1}{\ignorespaces Benchmark Campaign Summary}}{6}{table.caption.1}%
+\contentsline {table}{\numberline {2}{\ignorespaces Recommended Configurations by Use Case}}{6}{table.caption.2}%
+\contentsline {table}{\numberline {3}{\ignorespaces AES-256-GCM Suite Performance Statistics}}{8}{table.caption.5}%
+\contentsline {table}{\numberline {4}{\ignorespaces Top 5 Fastest AES-256-GCM Suites}}{8}{table.caption.6}%
+\contentsline {table}{\numberline {5}{\ignorespaces ChaCha20-Poly1305 Suite Performance Statistics}}{8}{table.caption.7}%
+\contentsline {table}{\numberline {6}{\ignorespaces Top 5 Fastest ChaCha20-Poly1305 Suites}}{8}{table.caption.8}%
+\contentsline {table}{\numberline {7}{\ignorespaces ASCON-128a Suite Performance Statistics}}{9}{table.caption.9}%
+\contentsline {table}{\numberline {8}{\ignorespaces Top 5 Fastest ASCON-128a Suites}}{9}{table.caption.10}%
+\contentsline {table}{\numberline {9}{\ignorespaces Algorithms at L1 Security Level}}{10}{table.caption.13}%
+\contentsline {table}{\numberline {10}{\ignorespaces Algorithms at L3 Security Level}}{11}{table.caption.14}%
+\contentsline {table}{\numberline {11}{\ignorespaces Algorithms at L5 Security Level}}{11}{table.caption.15}%
+\contentsline {table}{\numberline {12}{\ignorespaces Metrics for cs-mlkem512-ascon128a-falcon512}}{16}{table.caption.22}%
+\contentsline {table}{\numberline {13}{\ignorespaces Metrics for cs-mlkem512-ascon128a-mldsa44}}{17}{table.caption.23}%
+\contentsline {table}{\numberline {14}{\ignorespaces Metrics for cs-mlkem512-chacha20poly1305-mldsa44}}{18}{table.caption.24}%
+\contentsline {table}{\numberline {15}{\ignorespaces Metrics for cs-mlkem1024-chacha20poly1305-mldsa87}}{19}{table.caption.25}%
+\contentsline {table}{\numberline {16}{\ignorespaces Metrics for cs-mlkem512-aesgcm-falcon512}}{20}{table.caption.26}%
+\contentsline {table}{\numberline {17}{\ignorespaces Metrics for cs-mlkem1024-aesgcm-mldsa87}}{21}{table.caption.27}%
+\contentsline {table}{\numberline {18}{\ignorespaces Metrics for cs-mlkem768-ascon128a-mldsa65}}{22}{table.caption.28}%
+\contentsline {table}{\numberline {19}{\ignorespaces Metrics for cs-mlkem1024-chacha20poly1305-falcon1024}}{23}{table.caption.29}%
+\contentsline {table}{\numberline {20}{\ignorespaces Metrics for cs-mlkem768-chacha20poly1305-mldsa65}}{24}{table.caption.30}%
+\contentsline {table}{\numberline {21}{\ignorespaces Metrics for cs-mlkem512-chacha20poly1305-falcon512}}{25}{table.caption.31}%
+\contentsline {table}{\numberline {22}{\ignorespaces Metrics for cs-mlkem1024-ascon128a-mldsa87}}{26}{table.caption.32}%
+\contentsline {table}{\numberline {23}{\ignorespaces Metrics for cs-mlkem512-aesgcm-mldsa44}}{27}{table.caption.33}%
+\contentsline {table}{\numberline {24}{\ignorespaces Metrics for cs-mlkem768-aesgcm-mldsa65}}{28}{table.caption.34}%
+\contentsline {table}{\numberline {25}{\ignorespaces Metrics for cs-mlkem1024-aesgcm-falcon1024}}{29}{table.caption.35}%
+\contentsline {table}{\numberline {26}{\ignorespaces Metrics for cs-mlkem1024-ascon128a-falcon1024}}{30}{table.caption.36}%
+\contentsline {table}{\numberline {27}{\ignorespaces Metrics for cs-hqc128-aesgcm-mldsa44}}{31}{table.caption.37}%
+\contentsline {table}{\numberline {28}{\ignorespaces Metrics for cs-hqc128-chacha20poly1305-falcon512}}{32}{table.caption.38}%
+\contentsline {table}{\numberline {29}{\ignorespaces Metrics for cs-hqc128-chacha20poly1305-mldsa44}}{33}{table.caption.39}%
+\contentsline {table}{\numberline {30}{\ignorespaces Metrics for cs-hqc128-ascon128a-mldsa44}}{34}{table.caption.40}%
+\contentsline {table}{\numberline {31}{\ignorespaces Metrics for cs-hqc128-aesgcm-falcon512}}{35}{table.caption.41}%
+\contentsline {table}{\numberline {32}{\ignorespaces Metrics for cs-hqc128-ascon128a-falcon512}}{36}{table.caption.42}%
+\contentsline {table}{\numberline {33}{\ignorespaces Metrics for cs-classicmceliece348864-ascon128a-mldsa44}}{37}{table.caption.43}%
+\contentsline {table}{\numberline {34}{\ignorespaces Metrics for cs-classicmceliece348864-chacha20poly1305-falcon512}}{38}{table.caption.44}%
+\contentsline {table}{\numberline {35}{\ignorespaces Metrics for cs-hqc192-aesgcm-mldsa65}}{39}{table.caption.45}%
+\contentsline {table}{\numberline {36}{\ignorespaces Metrics for cs-hqc192-ascon128a-mldsa65}}{40}{table.caption.46}%
+\contentsline {table}{\numberline {37}{\ignorespaces Metrics for cs-classicmceliece348864-aesgcm-falcon512}}{41}{table.caption.47}%
+\contentsline {table}{\numberline {38}{\ignorespaces Metrics for cs-hqc192-chacha20poly1305-mldsa65}}{42}{table.caption.48}%
+\contentsline {table}{\numberline {39}{\ignorespaces Metrics for cs-classicmceliece348864-ascon128a-falcon512}}{43}{table.caption.49}%
+\contentsline {table}{\numberline {40}{\ignorespaces Metrics for cs-classicmceliece460896-aesgcm-mldsa65}}{44}{table.caption.50}%
+\contentsline {table}{\numberline {41}{\ignorespaces Metrics for cs-classicmceliece348864-chacha20poly1305-mldsa44}}{45}{table.caption.51}%
+\contentsline {table}{\numberline {42}{\ignorespaces Metrics for cs-hqc256-ascon128a-falcon1024}}{46}{table.caption.52}%
+\contentsline {table}{\numberline {43}{\ignorespaces Metrics for cs-hqc256-ascon128a-mldsa87}}{47}{table.caption.53}%
+\contentsline {table}{\numberline {44}{\ignorespaces Metrics for cs-hqc256-chacha20poly1305-falcon1024}}{48}{table.caption.54}%
+\contentsline {table}{\numberline {45}{\ignorespaces Metrics for cs-hqc256-aesgcm-mldsa87}}{49}{table.caption.55}%
+\contentsline {table}{\numberline {46}{\ignorespaces Metrics for cs-hqc256-chacha20poly1305-mldsa87}}{50}{table.caption.56}%
+\contentsline {table}{\numberline {47}{\ignorespaces Metrics for cs-classicmceliece460896-chacha20poly1305-mldsa65}}{51}{table.caption.57}%
+\contentsline {table}{\numberline {48}{\ignorespaces Metrics for cs-hqc256-aesgcm-falcon1024}}{52}{table.caption.58}%
+\contentsline {table}{\numberline {49}{\ignorespaces Metrics for cs-classicmceliece348864-aesgcm-mldsa44}}{53}{table.caption.59}%
+\contentsline {table}{\numberline {50}{\ignorespaces Metrics for cs-classicmceliece8192128-aesgcm-falcon1024}}{54}{table.caption.60}%
+\contentsline {table}{\numberline {51}{\ignorespaces Metrics for cs-mlkem512-chacha20poly1305-sphincs128s}}{55}{table.caption.61}%
+\contentsline {table}{\numberline {52}{\ignorespaces Metrics for cs-mlkem512-aesgcm-sphincs128s}}{56}{table.caption.62}%
+\contentsline {table}{\numberline {53}{\ignorespaces Metrics for cs-hqc128-aesgcm-sphincs128s}}{57}{table.caption.63}%
+\contentsline {table}{\numberline {54}{\ignorespaces Metrics for cs-hqc128-ascon128a-sphincs128s}}{58}{table.caption.64}%
+\contentsline {table}{\numberline {55}{\ignorespaces Metrics for cs-mlkem512-ascon128a-sphincs128s}}{59}{table.caption.65}%
+\contentsline {table}{\numberline {56}{\ignorespaces Metrics for cs-classicmceliece348864-ascon128a-sphincs128s}}{60}{table.caption.66}%
+\contentsline {table}{\numberline {57}{\ignorespaces Metrics for cs-classicmceliece348864-chacha20poly1305-sphincs128s}}{61}{table.caption.67}%
+\contentsline {table}{\numberline {58}{\ignorespaces Metrics for cs-hqc128-chacha20poly1305-sphincs128s}}{62}{table.caption.68}%
+\contentsline {table}{\numberline {59}{\ignorespaces Metrics for cs-classicmceliece8192128-ascon128a-falcon1024}}{63}{table.caption.69}%
+\contentsline {table}{\numberline {60}{\ignorespaces Metrics for cs-classicmceliece460896-ascon128a-mldsa65}}{64}{table.caption.70}%
+\contentsline {table}{\numberline {61}{\ignorespaces Metrics for cs-classicmceliece348864-aesgcm-sphincs128s}}{65}{table.caption.71}%
+\contentsline {table}{\numberline {62}{\ignorespaces Metrics for cs-mlkem1024-aesgcm-sphincs256s}}{66}{table.caption.72}%
+\contentsline {table}{\numberline {63}{\ignorespaces Metrics for cs-classicmceliece8192128-chacha20poly1305-falcon1024}}{67}{table.caption.73}%
+\contentsline {table}{\numberline {64}{\ignorespaces Metrics for cs-mlkem1024-ascon128a-sphincs256s}}{68}{table.caption.74}%
+\contentsline {table}{\numberline {65}{\ignorespaces Metrics for cs-mlkem1024-chacha20poly1305-sphincs256s}}{69}{table.caption.75}%
+\contentsline {table}{\numberline {66}{\ignorespaces Metrics for cs-classicmceliece8192128-aesgcm-mldsa87}}{70}{table.caption.76}%
+\contentsline {table}{\numberline {67}{\ignorespaces Metrics for cs-mlkem768-aesgcm-sphincs192s}}{71}{table.caption.77}%
+\contentsline {table}{\numberline {68}{\ignorespaces Metrics for cs-classicmceliece8192128-ascon128a-mldsa87}}{72}{table.caption.78}%
+\contentsline {table}{\numberline {69}{\ignorespaces Metrics for cs-mlkem768-ascon128a-sphincs192s}}{73}{table.caption.79}%
+\contentsline {table}{\numberline {70}{\ignorespaces Metrics for cs-hqc256-aesgcm-sphincs256s}}{74}{table.caption.80}%
+\contentsline {table}{\numberline {71}{\ignorespaces Metrics for cs-hqc192-ascon128a-sphincs192s}}{75}{table.caption.81}%
+\contentsline {table}{\numberline {72}{\ignorespaces Metrics for cs-hqc192-aesgcm-sphincs192s}}{76}{table.caption.82}%
+\contentsline {table}{\numberline {73}{\ignorespaces Metrics for cs-hqc256-chacha20poly1305-sphincs256s}}{77}{table.caption.83}%
+\contentsline {table}{\numberline {74}{\ignorespaces Metrics for cs-mlkem768-chacha20poly1305-sphincs192s}}{78}{table.caption.84}%
+\contentsline {table}{\numberline {75}{\ignorespaces Metrics for cs-classicmceliece8192128-chacha20poly1305-mldsa87}}{79}{table.caption.85}%
+\contentsline {table}{\numberline {76}{\ignorespaces Metrics for cs-hqc256-ascon128a-sphincs256s}}{80}{table.caption.86}%
+\contentsline {table}{\numberline {77}{\ignorespaces Metrics for cs-hqc192-chacha20poly1305-sphincs192s}}{81}{table.caption.87}%
+\contentsline {table}{\numberline {78}{\ignorespaces Metrics for cs-classicmceliece8192128-aesgcm-sphincs256s}}{82}{table.caption.88}%
+\contentsline {table}{\numberline {79}{\ignorespaces Metrics for cs-classicmceliece8192128-chacha20poly1305-sphincs256s}}{83}{table.caption.89}%
+\contentsline {table}{\numberline {80}{\ignorespaces Metrics for cs-classicmceliece460896-chacha20poly1305-sphincs192s}}{84}{table.caption.90}%
+\contentsline {table}{\numberline {81}{\ignorespaces Metrics for cs-classicmceliece460896-ascon128a-sphincs192s}}{85}{table.caption.91}%
+\contentsline {table}{\numberline {82}{\ignorespaces Metrics for cs-classicmceliece8192128-ascon128a-sphincs256s}}{86}{table.caption.92}%
+\contentsline {table}{\numberline {83}{\ignorespaces Complete Benchmark Results}}{86}{table.83}%

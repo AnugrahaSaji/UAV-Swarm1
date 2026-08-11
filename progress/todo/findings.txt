@@ -1,0 +1,777 @@
+Core Findings, Standards Alignment, and Hardening Plan
+PQC UAV Secure Tunnel Research Program
+
+Status
+- Draft working brief for the "core phase"
+- Scope: core transport/security substrate, not the full scheduler/paper stack
+- Purpose: align implementation, standards status, research framing, and immediate hardening priorities
+
+========================================================================
+1. Research Goal and Architectural Intent
+========================================================================
+
+The research goal is not merely to "run post-quantum crypto on drones".
+The goal is to build and rigorously evaluate a secure UAV communication
+stack where:
+
+1. MAVLink traffic is carried over a secure tunnel between GCS and drone.
+2. The tunnel supports post-quantum cryptography across:
+   - KEM / key establishment
+   - digital signatures / authentication
+   - AEAD / data-plane protection
+3. The system supports runtime agility:
+   - handshake agility
+   - AEAD agility
+   - NIST security-level-aware selection
+   - periodic or command-triggered rekey
+4. The scheduler eventually chooses operational profiles based on:
+   - standards-approved status
+   - mission criticality
+   - platform capability (Pi 4, Pi 5, future boards)
+   - temperature
+   - battery / power
+   - resource availability
+   - later, DDoS posture
+5. The paper reports:
+   - implementation details
+   - cryptographic and system overheads
+   - platform-sensitive benchmarking
+   - policy/scheduler behavior grounded in measured evidence
+
+This means the system must be split cleanly into layers.
+
+Required layer split:
+
+1. core/
+   The transport/security substrate only.
+   Responsibilities:
+   - handshake
+   - key schedule
+   - authenticated packet format
+   - replay protection
+   - rekey control plane
+   - runtime swap safety
+   - transport metrics
+
+2. MAVLink / MAVProxy integration
+   Responsibilities:
+   - provide realistic UAV traffic over the secure tunnel
+   - stay above core
+   - not leak MAVLink assumptions down into the cryptographic substrate
+
+3. scheduler/
+   Responsibilities:
+   - choose among allowed profiles
+   - consume policy metadata
+   - consume measured platform state
+   - request rekeys / level changes
+   - never define cryptographic truth itself
+
+4. benchmarking and paper pipeline
+   Responsibilities:
+   - produce evidence
+   - analyze overheads and tradeoffs
+   - feed policy inputs
+   - not redefine core behavior ad hoc
+
+If these layers remain mixed, the paper will look like a collection of scripts
+instead of a principled system.
+
+========================================================================
+2. What core Already Does Well
+========================================================================
+
+The current core is not a toy. It already contains several strong design
+elements that should be preserved and strengthened.
+
+2.1 Handshake shape is conceptually sound
+
+Files:
+- core/handshake.py
+- core/async_proxy.py
+
+The current handshake roughly does the following:
+
+1. GCS creates an ephemeral PQ KEM key.
+2. GCS signs a transcript binding:
+   - wire version
+   - session ID
+   - KEM algorithm
+   - signature algorithm
+   - ephemeral KEM public key
+   - challenge
+3. Drone verifies that signature.
+4. Drone encapsulates to the KEM public key.
+5. Both sides derive directional transport keys.
+6. Both sides perform explicit key confirmation.
+
+Important positive properties:
+
+- The transcript binds negotiated algorithm identity.
+- The transcript binds the ephemeral KEM public key.
+- The client enforces signature verification before accepting the session.
+- Key confirmation is explicit on both sides.
+- Downgrade-style mismatch between expected and received KEM/SIG is rejected.
+
+This is not TLS wire compatibility, but it aims at the same security goals
+TLS 1.3 aims at with authenticated handshake transcript binding.
+
+Relevant local code:
+- core/handshake.py:61
+- core/handshake.py:396
+- core/handshake.py:563
+- core/handshake.py:687
+
+2.2 Explicit key confirmation is a strong design choice
+
+Files:
+- core/handshake.py
+
+The code derives confirmation keys separately and computes confirmation tags
+over the handshake material. This is good and should stay. It is aligned with
+modern authenticated key-establishment practice and is especially relevant
+for KEM-based designs.
+
+Relevant local code:
+- core/handshake.py:83
+- core/handshake.py:648
+- core/handshake.py:783
+
+2.3 Data plane is structurally good
+
+Files:
+- core/aead.py
+
+The data-plane implementation has several solid properties:
+
+- Authenticated header binding using AAD
+- Session ID in the packet header
+- Epoch in the packet header
+- Deterministic nonce construction from epoch + sequence
+- Replay window enforcement
+- Replay state advances only after authentication succeeds
+
+This last point is especially important. Many weak implementations advance
+replay state too early and become vulnerable to denial of service via forged
+high-sequence packets.
+
+Relevant local code:
+- core/aead.py:252
+- core/aead.py:320
+- core/aead.py:459
+- core/aead.py:503
+
+2.4 Runtime agility is already present as an architecture
+
+Files:
+- core/policy_engine.py
+- core/async_proxy.py
+
+The code already distinguishes:
+
+- asymmetric profile changes requiring a new handshake
+- symmetric-only AEAD shifts that can be ratcheted
+
+This is the right architectural direction. It means the system can eventually
+support intelligent runtime adaptation rather than all-or-nothing restarts.
+
+Relevant local code:
+- core/policy_engine.py
+- core/async_proxy.py:1600
+
+========================================================================
+3. The Main Standards Reality
+========================================================================
+
+This section matters because the paper must be precise. NIST approves
+primitives and standards, not this repository's custom suite IDs.
+
+3.1 Important distinction
+
+"Approved primitive" is not the same thing as "approved suite".
+
+Example:
+- ML-KEM is a NIST-approved primitive
+- ML-DSA is a NIST-approved primitive
+- SLH-DSA is a NIST-approved primitive
+- "cs-mlkem768-mldsa65" is this repository's profile identifier
+
+Therefore, the paper should say:
+- "profile built from NIST-approved primitives"
+
+It should not say:
+- "NIST-approved suite"
+
+unless a suite has been standardized elsewhere, which is not the case here.
+
+3.2 Standards anchor set
+
+As of August 13, 2024:
+- FIPS 203 approved ML-KEM
+- FIPS 204 approved ML-DSA
+- FIPS 205 approved SLH-DSA
+
+This is the clean operational standards baseline.
+
+3.3 Future-track and research-track are different buckets
+
+As of March 11, 2025:
+- HQC was selected for future standardization
+
+This does not make HQC equal in status to ML-KEM today.
+
+Falcon:
+- not part of the August 13, 2024 approved PQC FIPS trio
+- still on the FN-DSA standardization path
+
+Classic McEliece:
+- useful as a research comparator
+- not selected into the current approved baseline
+
+3.4 Ascon status must be stated carefully
+
+As of August 13, 2025:
+- NIST SP 800-232 standardized Ascon-AEAD128
+
+The current repository's Ascon backend is not implementing the standardized
+NIST Ascon profile. It explicitly uses older Ascon 1.2 / Ascon-AEAD128a /
+submission-era behavior. That means it is a research/experimental backend,
+not a clean NIST-standard operational backend.
+
+3.5 Hybrid migration context
+
+NIST currently allows hybrid key-establishment constructions in the migration
+period, and current IETF TLS work follows that direction. That does not mean
+this project must immediately become hybrid, but it does mean:
+
+- pure PQ should be documented as a deliberate research choice
+- hybrid is the more conservative migration strategy for real deployments
+
+========================================================================
+4. Current Standards Misalignment in the Codebase
+========================================================================
+
+4.1 core/suites.py currently mixes standards classes
+
+File:
+- core/suites.py
+
+The current suite registry effectively treats:
+- ML-KEM / ML-DSA / SLH-DSA family
+- HQC
+- Falcon
+- Classic McEliece
+
+as peers inside one canonical suite system.
+
+This is good for benchmarking breadth.
+It is not good as an operational truth model.
+
+Why this matters:
+
+1. The scheduler will eventually use the suite registry.
+2. If the suite registry does not encode standards status, the scheduler
+   cannot cleanly distinguish:
+   - approved operational profiles
+   - future-track profiles
+   - experimental benchmark-only profiles
+3. The paper will be harder to defend because the implementation itself
+   does not preserve the distinction.
+
+Relevant local code:
+- core/suites.py:54
+- core/suites.py:188
+- core/suites.py:322
+- core/suites.py:659
+
+4.2 Naming and category issues
+
+File:
+- core/suites.py
+
+Specific issues:
+
+1. SPHINCS+ submission names are used as canonical identifiers even though
+   the NIST final standard is SLH-DSA.
+
+2. ML-DSA-44 is mapped internally to "L1" for practical pairing, even though
+   the final NIST framing is not the same as your local convenience level map.
+
+These are not immediate cryptographic breaks, but they are weak points for:
+- standards clarity
+- scheduler policy correctness
+- paper terminology
+
+Relevant local code:
+- core/suites.py:183
+- core/suites.py:263
+
+4.3 Ascon backend is pre-standard
+
+Files:
+- core/aead.py
+- core/_ascon_native.py
+- core/_ascon_native.c
+
+The local backend explicitly states:
+- older Ascon 1.2 behavior
+- Ascon-AEAD128a support
+- submission-era compatibility
+
+That means the current Ascon path should be treated as:
+- experimental comparison path
+
+It should not be part of the clean operational default set if the objective
+is a standards-grounded foundation.
+
+Relevant local code:
+- core/aead.py:109
+- core/aead.py:149
+- core/_ascon_native.py:9
+- core/_ascon_native.c:14
+
+========================================================================
+5. Current Code-Level Robustness Problems That Must Be Fixed
+========================================================================
+
+These are implementation defects, not abstract standards discussions.
+
+5.1 TCP control server remains starvable / denial-of-serviceable
+
+File:
+- core/control_tcp.py
+
+Problem summary:
+
+1. The listener uses a thread pool with a small worker count.
+2. Accepted sockets are handed off before early rejection is complete.
+3. Idle clients can sit around without being actively evicted.
+4. The executor queue can still become a pressure point.
+
+Why this matters:
+
+- The control plane is the mechanism for rekey, profile change, and runtime
+  agility.
+- If the control plane is easy to starve, the system is not operationally
+  robust even if the crypto is good.
+
+Needed outcome:
+
+- bounded admission
+- fast unauthorized peer rejection
+- idle-connection eviction
+- no unbounded backlog growth
+
+Relevant local code:
+- core/control_tcp.py:180
+- core/control_tcp.py:227
+- core/control_tcp.py:242
+
+5.2 Full handshake rekey weakens peer binding during soft transition
+
+File:
+- core/async_proxy.py
+
+Problem summary:
+
+The code captures the old peer address only for AEAD-only shifts. For a full
+handshake rekey, the previous receiver can remain alive during transition, but
+its previous peer address may become None. The peer-matching logic treats
+"expected peer is None" as permissive.
+
+Why this matters:
+
+- The soft transition window is exactly the time when the system is handling
+  old and new state simultaneously.
+- If source binding weakens during that window, the attack surface expands at
+  the worst possible moment.
+
+Needed outcome:
+
+- both old and new peer addresses must remain explicit during transition
+- permissive peer matching must never be the implicit fallback during rekey
+
+Relevant local code:
+- core/async_proxy.py:1602
+- core/async_proxy.py:1715
+- core/async_proxy.py:2086
+
+5.3 Plaintext peer latching logic is effectively dead
+
+File:
+- core/async_proxy.py
+
+Problem summary:
+
+The code comments claim support for learning MAVProxy's ephemeral port based on
+actual local traffic. In practice, app_peer_addr is initialized to a fixed
+configured peer and later is only updated if it is None, which never happens.
+
+Why this matters:
+
+- If the code claims dynamic local-port support, it must actually work.
+- If it does not work, measurements and real deployments can diverge.
+- This is especially relevant for MAVProxy integration.
+
+Needed outcome:
+
+- either true dynamic latching
+- or removal of the claim and explicit fixed-port contract
+
+Relevant local code:
+- core/async_proxy.py:1837
+- core/async_proxy.py:1992
+- core/async_proxy.py:2284
+
+========================================================================
+6. What the Scheduler Should Eventually Do
+========================================================================
+
+The current scheduler layer is too simple for the stated research goal.
+
+Current scheduler behavior:
+- largely "run whatever profiles have keys"
+- limited filtering by NIST level
+- no standards-status awareness
+- no explicit approved/future/experimental separation
+- no deep platform policy yet
+
+Relevant local code:
+- scheduler/sgcs.py
+- scheduler/sdrone.py
+
+That is acceptable for an early test harness.
+It is not sufficient for the paper's final policy story.
+
+The intended scheduler should eventually use metadata like:
+
+1. standards status
+   - approved_now
+   - selected_future
+   - experimental
+
+2. security profile
+   - NIST category / local normalized level
+   - mission-criticality target
+
+3. platform constraints
+   - Pi 4
+   - Pi 5
+   - future boards
+
+4. resource state
+   - CPU load
+   - temperature
+   - power draw
+   - battery
+
+5. operational posture
+   - DDoS mode
+   - network stress
+   - user/operator override
+
+6. runtime controls
+   - handshake agility
+   - AEAD agility
+   - NIST level update
+   - periodic rekey
+
+The key design rule:
+
+The scheduler should not invent allowed profiles.
+It should consume a well-defined policy/metadata model coming from core.
+
+========================================================================
+7. Target State for the Repository
+========================================================================
+
+7.1 core.suites should become metadata-driven
+
+Every primitive/profile should carry explicit metadata such as:
+
+- status:
+  approved_now / selected_future / experimental
+
+- standards_reference:
+  FIPS 203 / FIPS 204 / FIPS 205 / SP 800-232 / future-track / none
+
+- canonical_name:
+  the standard-facing name
+
+- compatibility_aliases:
+  older or liboqs-compatible names
+
+- operational_default:
+  true / false
+
+- benchmark_allowed:
+  true / false
+
+- scheduler_allowed:
+  true / false
+
+- platform_notes:
+  relevant platform caveats
+
+7.2 Operational baseline should be conservative
+
+Recommended operational baseline for the "approved" path:
+
+- KEM:
+  ML-KEM family only
+
+- Signatures:
+  ML-DSA and SLH-DSA standard-family support
+
+- AEAD:
+  AES-256-GCM and ChaCha20-Poly1305 first
+
+- Ascon:
+  only after the implementation is migrated to the actual standardized
+  SP 800-232 profile
+
+- HQC / Falcon / Classic McEliece:
+  benchmark and compare, but do not auto-schedule by default
+
+7.3 Hybrid should be treated as a future extension path
+
+Current code is pure PQ + PSK.
+That is acceptable for the current research phase if documented clearly.
+
+But the repository should keep a clean path toward future hybrid support,
+because hybrid is the conservative migration direction.
+
+========================================================================
+8. Concrete Phase Plan for the core Phase
+========================================================================
+
+Phase 1: Freeze the security contract of core
+
+Deliverable:
+- one concise protocol note describing:
+  - handshake messages
+  - transcript binding
+  - KDF inputs
+  - key confirmation
+  - packet header
+  - nonce construction
+  - replay rules
+  - rekey state machine
+
+Acceptance criteria:
+- no ambiguity about what is authenticated
+- no ambiguity about what changes across rekey
+- no ambiguity about epoch semantics
+
+Phase 2: Clean standards metadata and suite taxonomy
+
+Deliverable:
+- core.suites split into:
+  - approved operational profiles
+  - future-track profiles
+  - experimental benchmark-only profiles
+
+Acceptance criteria:
+- scheduler can filter approved-only without ad hoc logic
+- paper terminology matches actual code metadata
+
+Phase 3: Fix current implementation defects
+
+Deliverable:
+- control plane DoS hardening
+- soft-transition peer-binding fix
+- plaintext peer-latching fix
+
+Acceptance criteria:
+- explicit tests for each defect
+- no regression in existing core-quality suite
+
+Phase 4: Clean Ascon story
+
+Deliverable:
+Either:
+- migrate Ascon path to actual SP 800-232 Ascon-AEAD128
+Or:
+- keep current path but relabel it as experimental/non-operational
+
+Acceptance criteria:
+- repository no longer implies standards compliance where it does not exist
+
+Phase 5: Strengthen verification
+
+Deliverable:
+- local tests
+- loopback end-to-end tests
+- runtime rekey matrix tests
+- Pi hardware-in-loop validation
+- deterministic benchmark harnesses tied to the same suite metadata model
+
+Acceptance criteria:
+- all operational profiles validated in:
+  - initial handshake
+  - data-plane transfer
+  - periodic rekey
+  - operator-triggered rekey
+  - AEAD-only shift
+  - failure and rollback handling
+
+Phase 6: Connect scheduler policy after core is stable
+
+Deliverable:
+- scheduler consumes:
+  - suite metadata
+  - benchmark summaries
+  - platform measurements
+  - mission policy
+
+Acceptance criteria:
+- scheduler never chooses experimental profiles unless explicitly instructed
+- scheduler decisions are reproducible and explainable in the paper
+
+========================================================================
+9. Non-Negotiable Invariants for core
+========================================================================
+
+These are the conditions the core must satisfy before it can be called
+"rock solid" for the paper.
+
+1. No unauthenticated suite downgrade
+2. No epoch rollback acceptance
+3. No replay-window advancement before AEAD success
+4. No peer-binding relaxation during rekey unless explicitly configured
+5. No control-plane starvation from a handful of bad connections
+6. No split-brain cipher state during runtime swap
+7. No ambiguous standards labeling in operational profiles
+8. No scheduler dependence on undocumented suite semantics
+
+========================================================================
+10. Research Framing for the Paper
+========================================================================
+
+Recommended framing:
+
+"We implemented a UAV secure tunnel for MAVLink traffic that supports
+standards-approved post-quantum primitives, future-track candidates,
+and experimental comparators. The operational scheduler is restricted
+to standards-approved profiles, while the broader primitive set remains
+available for controlled benchmarking and comparative analysis."
+
+This framing is strong because it:
+- matches the real research goal
+- avoids overstating standards status
+- preserves experimental breadth
+- gives a clean story for scheduler policy
+- makes the paper easier to defend
+
+========================================================================
+11. Immediate Next Actions
+========================================================================
+
+Immediate next actions for the repository:
+
+1. Refactor core/suites.py metadata model
+2. Decide the Ascon path:
+   - migrate to SP 800-232
+   - or relabel as experimental
+3. Fix control_tcp starvation weakness
+4. Fix async_proxy soft-transition peer-binding weakness
+5. Fix async_proxy plaintext peer-latching logic
+6. Add focused verification tests for those defects
+7. Update scheduler to filter by standards status rather than "has keys"
+
+========================================================================
+12. Source References
+========================================================================
+
+Primary standards and guidance used for this assessment:
+
+1. NIST post-quantum cryptography FIPS approval news
+   Date: August 13, 2024
+   URL:
+   https://csrc.nist.gov/News/2024/postquantum-cryptography-fips-approved
+
+2. FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism Standard
+   URL:
+   https://csrc.nist.gov/pubs/fips/203/final
+
+3. FIPS 204: Module-Lattice-Based Digital Signature Standard
+   URL:
+   https://csrc.nist.gov/pubs/fips/204/final
+
+4. FIPS 205: Stateless Hash-Based Digital Signature Standard
+   URL:
+   https://csrc.nist.gov/pubs/fips/205/final
+
+5. NIST Digital Signatures project (FN-DSA / Falcon track context)
+   URL:
+   https://csrc.nist.gov/Projects/Digital-Signatures
+
+6. NIST announcement: HQC selected as a fourth-round KEM
+   Date: March 11, 2025
+   URL:
+   https://csrc.nist.gov/News/2025/hqc-announced-as-a-4th-round-selection
+
+7. NIST PQC FAQ (hybrid key establishment and dual signatures)
+   URL:
+   https://csrc.nist.gov/Projects/Post-Quantum-Cryptography/faqs
+
+8. SP 800-227: Recommendations for Key-Encapsulation Mechanisms
+   Date: September 18, 2025
+   URL:
+   https://csrc.nist.gov/pubs/sp/800/227/final
+
+9. SP 800-232: Ascon-Based Lightweight Cryptography Standards for
+   Constrained Devices
+   Date: August 13, 2025
+   URL:
+   https://csrc.nist.gov/pubs/sp/800/232/final
+
+10. RFC 8446: TLS 1.3
+    URL:
+    https://www.rfc-editor.org/rfc/rfc8446
+
+11. RFC 5116: Authenticated Encryption with Associated Data
+    URL:
+    https://www.rfc-editor.org/rfc/rfc5116
+
+12. Current IETF TLS hybrid design draft
+    URL:
+    https://datatracker.ietf.org/doc/html/draft-ietf-tls-hybrid-design-16
+
+13. KEMTLS paper
+    URL:
+    https://eprint.iacr.org/2020/534
+
+14. WireGuard paper
+    URL:
+    https://www.wireguard.com/papers/wireguard.pdf
+
+========================================================================
+13. Operational Note
+========================================================================
+
+The hardware-in-loop target mentioned by the user is the Raspberry Pi drone
+companion computer reachable at:
+
+- dev@100.101.93.23
+
+with repository path:
+- ~/secure-tunnel
+
+and cryptography environment:
+- ~/cenv/bbin/activate
+
+This should be used later for:
+- Pi validation
+- MAVProxy/Pixhawk integration checks
+- real hardware performance measurements
+- scheduler validation under live power/thermal constraints
+
+But the current focus remains:
+
+core first
+core correctness first
+core standards clarity first
+
+Only after that should scheduler policy, full benchmarking, and paper-writing
+be built on top.

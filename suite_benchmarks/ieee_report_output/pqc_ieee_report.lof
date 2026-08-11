@@ -1,0 +1,10 @@
+\contentsline {figure}{\numberline {1}{\ignorespaces AEAD Algorithm Comparison (Radar Chart)}}{7}{figure.caption.3}%
+\contentsline {figure}{\numberline {2}{\ignorespaces Handshake Time Distribution by AEAD (Violin Plot)}}{7}{figure.caption.4}%
+\contentsline {figure}{\numberline {3}{\ignorespaces NIST Security Level Comparison (Radar Chart)}}{9}{figure.caption.11}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Handshake Time by AEAD $\times $ NIST Level (Heatmap)}}{10}{figure.caption.12}%
+\contentsline {figure}{\numberline {5}{\ignorespaces KEM Performance Grouped by AEAD Algorithm}}{12}{figure.caption.16}%
+\contentsline {figure}{\numberline {6}{\ignorespaces KEM Artifact Size Composition}}{12}{figure.caption.17}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Signature Performance Grouped by AEAD Algorithm}}{13}{figure.caption.18}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Digital Signature Sizes by Algorithm}}{13}{figure.caption.19}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Complete Handshake Time Matrix (KEM $\times $ Signature)}}{14}{figure.caption.20}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Top 10 Fastest and Slowest Suites}}{14}{figure.caption.21}%

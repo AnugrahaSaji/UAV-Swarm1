@@ -1,0 +1,60 @@
+﻿\documentclass[10pt]{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{pdflscape}
+\usepackage{array}
+
+\begin{document}
+
+\begin{landscape}
+\tiny
+\setlength{\tabcolsep}{2pt}
+
+\begin{longtable}{lllllllllllrrrrrrrrrrrrrrrrrrrrl}
+\caption{Handshake Benchmark Results (All 24 Profiles, Grouped by NIST Level)}\\
+\toprule
+suite\_id & key\_handshake\_id & key\_handshake & suite\_data\_aead\_id & suite\_data\_aead & handshake\_runtime\_aead & kem & sig & aead & nist\_level & detector & duration\_s & iterations & mean\_ms & median\_ms & p95\_ms & p99\_ms & stdev\_ms & min\_ms & max\_ms & throughput\_hz & baseline\_power\_w & avg\_gross\_power\_w & avg\_net\_power\_w & total\_net\_energy\_j & per\_hs\_energy\_uj & power\_samples & sample\_rate\_hz & cpu\_avg & cpu\_peak & temp\_c & error \\
+\midrule
+\endfirsthead
+
+\toprule
+suite\_id & key\_handshake\_id & key\_handshake & suite\_data\_aead\_id & suite\_data\_aead & handshake\_runtime\_aead & kem & sig & aead & nist\_level & detector & duration\_s & iterations & mean\_ms & median\_ms & p95\_ms & p99\_ms & stdev\_ms & min\_ms & max\_ms & throughput\_hz & baseline\_power\_w & avg\_gross\_power\_w & avg\_net\_power\_w & total\_net\_energy\_j & per\_hs\_energy\_uj & power\_samples & sample\_rate\_hz & cpu\_avg & cpu\_peak & temp\_c & error \\
+\midrule
+\endhead
+
+\bottomrule
+\endfoot
+
+\input{reports/handshake_rows.tex}
+
+\end{longtable}
+\end{landscape}
+
+\clearpage
+
+\begin{landscape}
+\tiny
+\setlength{\tabcolsep}{2pt}
+
+\begin{longtable}{llllrrrrrrrrrrrrrrrrl}
+\caption{AEAD Benchmark Results (All 9 AEADs, Encrypt/Decrypt Across Baseline/XGBoost/TST, Grouped by Detector and NIST Level)}\\
+\toprule
+aead\_name & key\_tier & operation & detector & payload\_size & iterations & duration\_s & mean\_us & median\_us & throughput\_ops & baseline\_power\_w & avg\_gross\_power\_w & avg\_net\_power\_w & total\_net\_energy\_j & per\_op\_energy\_uj & power\_samples & sample\_rate\_hz & cpu\_avg & cpu\_peak & temp\_c & error \\
+\midrule
+\endfirsthead
+
+\toprule
+aead\_name & key\_tier & operation & detector & payload\_size & iterations & duration\_s & mean\_us & median\_us & throughput\_ops & baseline\_power\_w & avg\_gross\_power\_w & avg\_net\_power\_w & total\_net\_energy\_j & per\_op\_energy\_uj & power\_samples & sample\_rate\_hz & cpu\_avg & cpu\_peak & temp\_c & error \\
+\midrule
+\endhead
+
+\bottomrule
+\endfoot
+
+\input{reports/aead_rows.tex}
+
+\end{longtable}
+\end{landscape}
+
+\end{document}

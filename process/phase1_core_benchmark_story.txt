@@ -1,0 +1,223 @@
+PHASE 1 CORE BENCHMARK PROCESS REPORT
+Project: secure-tunnel (core-only)
+Authoring context: local GCS Windows host, conda env `oqs-dev`
+Date: 2026-03-14
+
+================================================================
+1) MISSION FOR PHASE 1
+================================================================
+The goal of this phase was to validate the foundation in `core/` only:
+- Understand the full control-plane and data-plane wiring from code.
+- Verify the handshake -> AEAD tunnel -> rekey path in real execution.
+- Run localhost end-to-end validation loops (GCS <-> Drone roles on one host).
+- Record hard observations only (no assumptions, no scheduler scope).
+
+I explicitly ignored `sscheduler/` and `scheduler/` logic for this phase.
+
+================================================================
+2) ENVIRONMENT USED
+================================================================
+Host:
+- Windows (GCS machine)
+
+Python runtime:
+- `conda run -n oqs-dev python ...`
+- Python 3.11.14 in `oqs-dev`
+
+Crypto runtime observations:
+- `core.suites` reports 24 canonical suites.
+- Runtime AEAD support detected locally: `aesgcm`, `chacha20poly1305`, `ascon128a`.
+- Direct AEAD primitive probe in runtime also passed `ascon128`.
+- liboqs/liboqs-python version mismatch warning observed:
+  liboqs `0.15.0-rc1` vs liboqs-python `0.14.1`.
+
+================================================================
+3) WHAT I READ IN CORE (PROCESS + MENTAL MODEL)
+================================================================
+I read all Python files in `core/` and built the runtime map:
+
+Tunnel-critical runtime path:
+- `core/run_proxy.py` (CLI/preflight/key-load wrapper)
+- `core/async_proxy.py` (actual runtime authority)
+- `core/handshake.py` (PQC handshake + PSK-bound KDF + key confirmation)
+- `core/aead.py` (wire header/AEAD/replay/session checks)
+- `core/policy_engine.py` (in-band 2PC state machine)
+- `core/control_tcp.py` (OOB command validation + intent enqueue)
+- `core/suites.py` (suite and negotiation model)
+- `core/config.py` (runtime defaults and validation)
+- `core/env_loader.py`, `core/logging_utils.py`, `core/exceptions.py`
+
+Support/observability modules also reviewed:
+- `core/metrics_schema.py`
+- `core/metrics_collectors.py`
+- `core/metrics_aggregator.py`
+- `core/mavlink_collector.py`
+- `core/robust_logger.py`
+- `core/power_monitor.py`, `core/power_monitor_full.py`
+- `core/process.py`, `core/clock_sync.py`
+- `core/_ascon_native.py`, `core/_kat_ascon128.py`, `core/_kat_full.py`
+- `core/__init__.py`
+
+High-level control/data model from code:
+- Control-plane intent can come from:
+  1) in-band control packets (type 0x02 payload), and
+  2) optional TCP control RPC.
+- Both routes converge into policy state (`request_prepare`, `prepare_ok`,
+  `commit_rekey`, `record_rekey_result`) and then rekey worker authority in
+  `async_proxy.py`.
+- Data-plane is strict:
+  plaintext UDP in -> AEAD encrypt -> encrypted UDP peer ->
+  AEAD decrypt -> plaintext UDP out.
+- Rekey swap path supports transition window with `prev_receiver` handling.
+
+================================================================
+4) BASELINE VERIFICATION COMMANDS I RAN
+================================================================
+Compile gate:
+`conda run -n oqs-dev python -m py_compile core/suites.py core/policy_engine.py core/control_tcp.py core/async_proxy.py core/handshake.py core/aead.py core/run_proxy.py core/config.py core/env_loader.py core/exceptions.py core/logging_utils.py core/process.py core/clock_sync.py core/robust_logger.py core/power_monitor.py core/power_monitor_full.py core/metrics_schema.py core/metrics_collectors.py core/metrics_aggregator.py core/mavlink_collector.py core/_ascon_native.py core/_kat_ascon128.py core/_kat_full.py core/__init__.py`
+
+Core quality harness:
+`conda run -n oqs-dev python -X utf8 tests/test_core_quality.py`
+
+Observed result:
+- `37 passed, 0 failed`.
+
+================================================================
+5) LOCALHOST E2E BENCHMARK METHOD I USED
+================================================================
+I built a local runtime test harness (temporary scripts, removed afterward).
+Method:
+
+Topology on one machine:
+- GCS proxy role and Drone proxy role run concurrently in separate threads.
+- Both use `run_proxy(...)` directly from `core.async_proxy`.
+- A local drone echo process binds `DRONE_PLAINTEXT_RX`,
+  receives decrypted payload, sends same payload back to `DRONE_PLAINTEXT_TX`.
+- GCS probe sends payload to `GCS_PLAINTEXT_TX` and waits on `GCS_PLAINTEXT_RX`.
+
+Handshake/identity setup:
+- Generated GCS signing keypair in-memory via oqs `Signature(...)`.
+- Provided `gcs_sig_secret` to GCS role and corresponding `gcs_sig_public`
+  to Drone role.
+- Set a deterministic 32-byte `DRONE_PSK` in process env for test.
+
+Control-plane rekey setup (for rekey tests):
+- Enabled TCP control in cfg:
+  `ENABLE_TCP_CONTROL=True`, `CONTROL_COORDINATOR_ROLE='gcs'`.
+- Sent JSON commands (`ping`, `status`, `rekey`) to GCS control port.
+
+Flow validated:
+`GCS app -> GCS plaintext TX -> GCS proxy encrypt -> encrypted UDP -> Drone proxy decrypt -> Drone plaintext RX -> local drone echo -> Drone plaintext TX -> Drone proxy encrypt -> encrypted UDP -> GCS proxy decrypt -> GCS plaintext RX`
+
+================================================================
+6) MATRIX EXECUTION PLAN I APPLIED
+================================================================
+Phase 1 runtime matrix (localhost):
+- Suite smoke: all 24 suite IDs from `core.suites.list_suites()`
+  with `aesgcm`.
+- AEAD smoke: baseline suite with detected runtime AEAD tokens.
+- Rekey sweep: baseline suite rekey attempts to all 24 target suites.
+
+Important note:
+- Temporary harness files were used only for this run and then deleted.
+- Repository tracked files were not modified for this benchmark process.
+
+================================================================
+7) RAW OBSERVATIONS (VERIFIED)
+================================================================
+Observation A: baseline pipeline works.
+- End-to-end roundtrip is successful for supported profiles.
+- Handshake logs consistently showed successful session establishment.
+
+Observation B: AEAD runtime works for multiple tokens.
+- Confirmed data-plane roundtrip with:
+  `aesgcm`, `chacha20poly1305`, `ascon128`, `ascon128a`.
+
+Observation C: major Windows UDP failure mode found.
+- Both recv loops in `async_proxy` can crash with:
+  `ConnectionResetError: [WinError 10054]`
+- This was reproducible and caused:
+  - proxy thread termination,
+  - control TCP timeouts (since runtime died),
+  - failed rekey attempts in matrix runs.
+
+Observation D: default sniff path amplifies this on Windows.
+- `GCS_PLAINTEXT_SNIFF_PORT` defaults to non-zero (`14553`), so a sniff copy
+  send path is active unless explicitly disabled.
+- In localhost runs without collector listener behavior aligned with UDP reset
+  side effects; disabling sniff port in test cfg made control RPC stable.
+
+Observation E: suite registry vs runtime KEM support mismatch.
+- HQC suites are present in canonical suite list.
+- Runtime liboqs on this host does not enable HQC KEMs.
+- Result: HQC suite handshakes fail at KEM object construction.
+
+Observation F: rekey behavior depends on signature key compatibility.
+- Rekey from `cs-mlkem768-mldsa65` to another suite with SAME signature family
+  (`...-mldsa65`) succeeded with soft transition and post-rekey traffic success.
+- Rekey to different signature profile failed when only one static public key
+  was provisioned on drone side (`signature verification failed: byte string too long`).
+- This is expected if per-suite identity material is not supplied.
+
+Observation G: coordinator status handling after peer fail is sticky.
+- During failed rekey scenarios, coordinator status remained in
+  negotiation/swap state longer than operator expects, while fail status was
+  visible in `last_status`.
+
+Observation H: AEAD agility in suite model is not naturally reachable.
+- Canonical suite registry currently resolves data AEAD profile as AES-GCM for
+  all suite IDs.
+- AEAD-only ratchet code exists, but normal suite-driven negotiation does not
+  naturally produce distinct `data_aead_id` transitions.
+
+================================================================
+8) CLEAR UNDERSTANDING OF THE CORE PROCESS (AS A STORY)
+================================================================
+The process starts in `run_proxy`, but the real authority is in `async_proxy`.
+`run_proxy` resolves suite, loads keys, runs preflight, then calls `run_proxy(...)`
+in the core runtime.
+
+`async_proxy` performs the authenticated handshake first. If handshake succeeds,
+it creates sender/receiver AEAD contexts and starts selector-based UDP relay loops.
+At this point the tunnel is live.
+
+When application traffic arrives at plaintext ingress, the proxy wraps it,
+encrypts with deterministic nonce strategy, and transmits encrypted UDP to peer.
+Peer side validates header/session/epoch/replay, decrypts, and emits plaintext.
+
+Rekey is intentionally asynchronous. A control intent is queued, negotiation
+messages exchange over encrypted path, and worker thread performs new handshake
+or ratchet path, then atomically swaps active cipher context. A short soft
+transition window allows old-session packet acceptance through `prev_receiver`.
+
+In Windows local tests, this chain is fragile if UDP reset events are not
+absorbed. Once a recv loop throws unhandled 10054, runtime exits and the rest
+of the process (control/rekey observability) collapses even though crypto logic
+itself is correct.
+
+So the foundation is real and functional, but platform hardening and capability
+gating are mandatory before calling the tunnel rock-solid.
+
+================================================================
+9) PHASE 1 CONCLUSIONS
+================================================================
+What is strong:
+- Core cryptographic wiring is coherent.
+- Handshake/authentication/KDF/replay protections are present.
+- End-to-end data path works on localhost.
+- Rekey mechanics can succeed in valid-key scenarios.
+
+What must be fixed next:
+1) Windows UDP reset hardening in both recv loops.
+2) Runtime suite pruning by KEM support (not signature only).
+3) Explicit AEAD profile transition model that is truly reachable by control API.
+4) Per-suite signing identity strategy for cross-signature rekey campaigns.
+5) Cleaner coordinator rollback semantics on failed commit paths.
+
+================================================================
+10) REPRODUCIBILITY NOTES
+================================================================
+- All phase-1 runtime work was executed with `conda` env `oqs-dev`.
+- Temporary harness scripts/results were deleted after analysis.
+- Working tree was returned to clean state.
+

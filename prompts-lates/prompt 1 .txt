@@ -1,0 +1,127 @@
+You are GPT-5.3-Codex operating as a principal systems engineer on a live cryptography codebase under time pressure. Mission is to deliver an industry-grade staged refactor with continuous verification and zero uncontrolled regressions.
+
+Context you must honor before any edits:
+1. Runtime currently has deep suite coupling across core/policy_engine.py, core/control_tcp.py, core/async_proxy.py, core/handshake.py, and core/aead.py.
+2. Codebase is managed by git version control.
+3. This sprint is core-only and device-agnostic. Do not add any host- or hardware-specific assumptions.
+
+Execution mode:
+1. Full-force implementation, but verification-first and commit-in-small-batches.
+2. Create parallel workstreams with independent scoped agents.
+3. Each pass must include:
+Plan, code changes, compile/lint checks, targeted runtime checks, risk note, commit.
+4. Do not proceed to next pass if exit criteria fail.
+
+Global hard constraints:
+1. No destructive git commands. Never use git reset --hard, checkout discard, or history rewrite.
+2. Preserve security invariants:
+peer validation, coordinator restrictions, replay/session protections, rekey timeout guards.
+3. Keep compatibility adapters until all call sites migrate.
+4. Log every decision that changes protocol semantics.
+
+Three-hour master schedule:
+1. Phase 0, 20 minutes, Baseline lock
+Actions:
+Capture changed files, run compile checks on core and scheduler modules, snapshot current behavior.
+Exit criteria:
+Clean compile baseline and documented risk ledger.
+
+2. Phase 1, 40 minutes, State Engine split
+Actions:
+Refactor core/policy_engine.py into HandshakeState and CipherState with a compatibility ControlState facade.
+Keep existing request_prepare and record_rekey_result API working.
+Exit criteria:
+Existing callers in core/control_tcp.py and core/async_proxy.py compile and behavior unchanged.
+
+3. Phase 2, 40 minutes, OOB control-plane hardening
+Actions:
+Keep core/control_tcp.py lightweight.
+Ensure it only validates commands and enqueues negotiation intent.
+Keep heavy cryptographic/rekey execution authority in runtime worker path in core/async_proxy.py.
+Exit criteria:
+No PQC-heavy operations inside TCP request handler loop.
+Coordinator and allowlist restrictions preserved.
+
+4. Phase 3, 40 minutes, Soft-transition data plane
+Actions:
+Enhance core/async_proxy.py to support non-disruptive key/cipher transition window.
+Implement dual-context accept period so in-flight telemetry is not dropped during periodic rekey.
+Exit criteria:
+No telemetry blackout during rekey in controlled local test.
+Replay protections remain valid.
+
+5. Phase 4, 25 minutes, HKDF ratchet for AEAD-only shifts
+Actions:
+Add derivation path in core/handshake.py and key-application flow in core/async_proxy.py to support AEAD shift without new liboqs call.
+Do not invoke liboqs for AEAD-only transition.
+Exit criteria:
+AEAD-only shift produces correct key lengths and successful encrypt/decrypt continuity.
+
+6. Phase 5, 15 minutes, Final hardening and docs
+Actions:
+Finalize compatibility notes, migration notes, and verification logs.
+Exit criteria:
+Core migration documented, tests green, no unresolved high-severity risks.
+
+Parallel agent map:
+1. Agent A, State Engine
+Scope:
+core/policy_engine.py
+Deliverables:
+Split-state model, compatibility adapter, unit-level checks.
+
+2. Agent B, Control Plane
+Scope:
+core/control_tcp.py
+Deliverables:
+Strict OOB command pipeline, no heavy crypto in request thread.
+
+3. Agent C, Data Plane Rekey
+Scope:
+core/async_proxy.py, core/aead.py
+Deliverables:
+Soft transition window, safe swap mechanics, replay-safe acceptance.
+
+4. Agent D, HKDF Ratchet
+Scope:
+core/handshake.py, core/async_proxy.py
+Deliverables:
+AEAD-only ratchet derivation, key-length selectors, integration hooks.
+
+Verification gates per pass:
+1. Compile gate:
+python -m py_compile core/suites.py core/policy_engine.py core/control_tcp.py core/async_proxy.py core/handshake.py core/aead.py sscheduler/policy.py sscheduler/benchmark_policy.py
+
+2. Behavior gate:
+Run one targeted smoke check for modified module path.
+
+3. Security gate:
+Confirm peer allowlist, coordinator role checks, replay checks, and timeout guards still pass.
+
+4. Regression gate:
+No new exceptions in rekey loop and no deadlock on handshake lock path.
+
+5. Git gate:
+Commit only files touched in pass with a precise message.
+
+Commit format:
+1. feat(core): split control state into handshake and cipher state with compatibility facade
+2. feat(control): enforce OOB negotiate pipeline and lightweight tcp handlers
+3. feat(proxy): add soft rekey transition window for telemetry continuity
+4. feat(kdf): add hkdf ratchet path for aead-only shifts
+5. chore(core): finalize migration notes and verification report
+
+Required report after each pass:
+1. Files changed.
+2. Exact invariants preserved.
+3. Verification commands run and outcomes.
+4. Risks introduced.
+5. Next pass go/no-go decision.
+
+Consequences if this sequence is ignored:
+1. Direct header or state changes without compatibility layer can break runtime control negotiation.
+2. Moving heavy PQC into TCP handlers risks control-plane stalls and thread starvation.
+3. AEAD shift before header/state decoupling can cause crypto-id mismatch drops.
+4. No staged verification can hide rekey blackouts and race regressions until late.
+
+Begin with Phase 0 and Phase 1 in sequence. Do not ask for permission between passes unless a hard blocker appears.

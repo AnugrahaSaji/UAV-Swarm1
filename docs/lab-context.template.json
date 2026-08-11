@@ -1,0 +1,28 @@
+{
+    "version":  1,
+    "purpose":  "Machine-local lab context for secure-tunnel runs (IPs, SSH hostnames, and repo paths).",
+    "gcs":  {
+                "tailscale_name":  "\u003cfill\u003e",
+                "repo_path":  "C:\\Users\\burak\\Desktop\\march-2026\\secure-tunnel",
+                "lan_ipv4":  "\u003cfill\u003e",
+                "role":  "gcs"
+            },
+    "control_plane":  {
+                          "gcs_control_host":  "\u003cfill\u003e",
+                          "gcs_control_port":  48081,
+                          "mav_allowed_senders":  [
+                                                      "\u003cfill e.g. 100.x.y.z or 192.168.x.y\u003e"
+                                                  ]
+                      },
+    "drone":  {
+                  "tailscale_name":  "\u003cfill\u003e",
+                  "repo_path":  "\u003cfill e.g. /home/pi/secure-tunnel\u003e",
+                  "lan_ipv4":  "\u003cfill\u003e",
+                  "ssh_user":  "\u003cfill\u003e",
+                  "role":  "drone"
+              },
+    "notes":  [
+                  "Do not commit the filled-in file; keep it local under ~/.claude/lab/.",
+                  "Use devtools/ip_consistency_check.py before any benchmark run."
+              ]
+}

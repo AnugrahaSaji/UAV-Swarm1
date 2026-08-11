@@ -1,0 +1,169 @@
+\subsection{Alias Definitions for Result Tables}
+\begin{table}[t]
+\centering
+\caption{Aliases used in result tables.}
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}lll@{}}\toprule
+Alias & Type & Primitive \\ \midrule
+K-ML512 & KEM & ML-KEM-512 \\
+K-ML768 & KEM & ML-KEM-768 \\
+K-ML1024 & KEM & ML-KEM-1024 \\
+K-HQC128 & KEM & HQC-128 \\
+K-HQC192 & KEM & HQC-192 \\
+K-HQC256 & KEM & HQC-256 \\
+K-MCE348 & KEM & Classic-McEliece-348864 \\
+K-MCE460 & KEM & Classic-McEliece-460896 \\
+K-MCE819 & KEM & Classic-McEliece-8192128 \\
+S-DSA44 & SIG & ML-DSA-44 \\
+S-DSA65 & SIG & ML-DSA-65 \\
+S-DSA87 & SIG & ML-DSA-87 \\
+S-F512 & SIG & Falcon-512 \\
+S-F1024 & SIG & Falcon-1024 \\
+S-SP192s & SIG & SPHINCS{+}-SHA2-192s-simple \\
+A-AG & AEAD & AES-256-GCM \\
+A-CP & AEAD & ChaCha20-Poly1305 \\
+A-AS & AEAD & Ascon-128a \\
+D-NO & Mode & no-ddos \\
+D-XGB & Mode & ddos-xgboost \\
+D-TST & Mode & ddos-tst \\
+\bottomrule\end{tabular}
+\label{tab:res-alias-manual}
+\end{table}
+
+\subsection{KEM Primitives (Raw 1.8GHz Measurements)}
+\begin{table*}[t]
+\centering
+\caption{KEM metrics from raw primitive benchmarks. $\Delta P = P_{mean} - P_{idle}$, with $P_{idle}=3309\,\mathrm{mW}$.}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llrrrrrrr@{}}\toprule
+Alias & NIST & KeyGen ms & Encap ms & Decap ms & KeyGen $\Delta P$ mW & Encap $\Delta P$ mW & Decap $\Delta P$ mW & (PK,CT) B \\ \midrule
+K-MCE348 & L1 & 297.606 & 0.460 & 55.608 & 966.2 & 156.2 & 410.7 & (261120,96) \\
+K-HQC128 & L1 & 22.152 & 44.625 & 73.131 & 412.6 & 441.6 & 566.8 & (2249,4433) \\
+K-ML512 & L1 & 0.191 & 0.148 & 0.154 & 125.9 & 153.9 & 172.7 & (800,768) \\
+K-MCE460 & L3 & 982.174 & 0.858 & 89.434 & 1075.7 & 279.6 & 485.1 & (524160,156) \\
+K-HQC192 & L3 & 67.430 & 135.392 & 211.278 & 501.2 & 650.9 & 731.5 & (4522,8978) \\
+K-ML768 & L3 & 0.223 & 0.175 & 0.182 & 149.4 & 185.9 & 205.7 & (1184,1088) \\
+K-MCE819 & L5 & 8145.041 & 1.856 & 209.319 & 1092.6 & 301.2 & 639.1 & (1357824,208) \\
+K-HQC256 & L5 & 123.840 & 250.537 & 392.221 & 646.9 & 782.9 & 819.0 & (7245,14421) \\
+K-ML1024 & L5 & 0.269 & 0.212 & 0.225 & 154.4 & 180.7 & 177.5 & (1568,1568) \\
+\bottomrule\end{tabular}
+\label{tab:res-kem-manual}
+\end{table*}
+
+\subsection{Digital Signatures (Raw 1.8GHz Measurements)}
+\begin{table*}[t]
+\centering
+\caption{Signature metrics from raw primitive benchmarks. $\Delta P = P_{mean} - P_{idle}$, with $P_{idle}=3309\,\mathrm{mW}$.}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llrrrrrrr@{}}\toprule
+Alias & NIST & KeyGen ms & Sign ms & Verify ms & KeyGen $\Delta P$ mW & Sign $\Delta P$ mW & Verify $\Delta P$ mW & Sig B \\ \midrule
+S-F512 & L1 & 17.853 & 0.773 & 0.188 & 326.9 & 255.4 & 238.8 & 654 \\
+S-DSA44 & L1 & 0.368 & 0.975 & 0.324 & 245.8 & 279.5 & 235.8 & 2420 \\
+S-DSA65 & L3 & 0.552 & 1.214 & 0.476 & 240.9 & 268.9 & 240.2 & 3309 \\
+S-SP192s & L3 & 282.539 & 2610.663 & 2.275 & 797.1 & 763.8 & 303.3 & 16224 \\
+S-F1024 & L5 & 49.018 & 1.441 & 0.275 & 439.3 & 250.4 & 240.0 & 1267 \\
+S-DSA87 & L5 & 0.739 & 1.657 & 0.718 & 227.0 & 268.1 & 235.2 & 4627 \\
+\bottomrule\end{tabular}
+\label{tab:res-sig-manual}
+\end{table*}
+
+\subsection{AEAD Metrics (Power Baseline-Subtracted)}
+\begin{table*}[t]
+\centering
+\caption{AEAD metrics from raw primitive benchmarks. $\Delta P = P_{mean} - 3309\,\mathrm{mW}$.}
+\scriptsize
+\setlength{\tabcolsep}{2.3pt}
+\begin{tabular}{@{}llrrrrrrr@{}}\toprule
+Alias & Op & Payload B & Mean $\mu$s & P95 $\mu$s & Throughput MB/s & $\Delta P$ mW & CT B & Ovhd B \\ \midrule
+A-AG & decrypt & 64 & 43.03 & 49.41 & 1.51 & 269.5 & -- & -- \\
+A-AG & encrypt & 64 & 42.21 & 55.43 & 1.57 & 184.7 & 80 & 16 \\
+A-AG & decrypt & 256 & 48.29 & 56.11 & 5.36 & 183.1 & -- & -- \\
+A-AG & encrypt & 256 & 46.04 & 53.32 & 5.70 & 190.3 & 272 & 16 \\
+A-AG & decrypt & 1024 & 66.57 & 78.37 & 15.51 & 171.3 & -- & -- \\
+A-AG & encrypt & 1024 & 65.29 & 75.30 & 15.92 & 227.4 & 1040 & 16 \\
+A-AG & decrypt & 4096 & 122.14 & 134.43 & 33.73 & 171.4 & -- & -- \\
+A-AG & encrypt & 4096 & 121.56 & 134.28 & 33.86 & 250.0 & 4112 & 16 \\
+A-AS & decrypt & 64 & 25.32 & 30.78 & 2.57 & 223.1 & -- & -- \\
+A-AS & encrypt & 64 & 23.35 & 30.37 & 2.84 & 202.7 & 80 & 16 \\
+A-AS & decrypt & 256 & 25.99 & 32.33 & 10.16 & 227.6 & -- & -- \\
+A-AS & encrypt & 256 & 22.77 & 27.96 & 11.35 & 201.9 & 272 & 16 \\
+A-AS & decrypt & 1024 & 33.74 & 39.65 & 30.72 & 157.4 & -- & -- \\
+A-AS & encrypt & 1024 & 31.14 & 39.41 & 33.47 & 212.8 & 1040 & 16 \\
+A-AS & decrypt & 4096 & 49.35 & 60.85 & 83.87 & 171.9 & -- & -- \\
+A-AS & encrypt & 4096 & 45.33 & 54.11 & 91.70 & 250.8 & 4112 & 16 \\
+A-CP & decrypt & 64 & 46.01 & 51.09 & 1.51 & 258.5 & -- & -- \\
+A-CP & encrypt & 64 & 61.78 & 46.74 & 1.59 & 192.0 & 80 & 16 \\
+A-CP & decrypt & 256 & 45.83 & 54.35 & 5.67 & 162.8 & -- & -- \\
+A-CP & encrypt & 256 & 45.40 & 51.26 & 5.84 & 170.3 & 272 & 16 \\
+A-CP & decrypt & 1024 & 56.09 & 69.56 & 18.59 & 204.5 & -- & -- \\
+A-CP & encrypt & 1024 & 53.17 & 61.85 & 19.58 & 230.1 & 1040 & 16 \\
+A-CP & decrypt & 4096 & 71.05 & 83.06 & 58.20 & 195.0 & -- & -- \\
+A-CP & encrypt & 4096 & 67.03 & 78.19 & 62.14 & 236.6 & 4112 & 16 \\
+\bottomrule\end{tabular}
+\label{tab:res-aead-manual}
+\end{table*}
+
+\subsection{Unified Suite Table (No-DDoS, XGB, TST)}
+Handshake latency is computed as
+$T_{hs}=T_{build\_hello}+T_{parse\_verify}+T_{encap}+T_{decap}+T_{derive\_client}+T_{derive\_server}$.
+Table~\ref{tab:res-unified-manual} reports the measured suite rows that are level-matched in the selected 9\,$\times$\,6 design grid.
+
+\begin{table*}[t]
+\centering
+\caption{Unified suite results with no-ddos/xgb/tst columns (AEAD-averaged, latest run).}
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{@{}llrrrrrrr@{}}\toprule
+KEM alias & SIG alias & NIST & D-NO ms & D-XGB ms & D-TST ms & XGB $\Delta$\% & TST $\Delta$\% & Wire B \\ \midrule
+K-ML512 & S-DSA44 & L1 & 11.35 & 12.04 & 40.88 & +6.1 & +260.1 & 4020 \\
+K-ML512 & S-F512 & L1 & 11.02 & 11.01 & 31.29 & -0.1 & +184.0 & 2255 \\
+K-ML768 & S-DSA65 & L3 & 13.04 & 13.23 & 32.50 & +1.4 & +149.2 & 5613 \\
+K-ML768 & S-SP192s & L3 & 2650.37 & 2612.99 & 3415.45 & -1.4 & +28.9 & 18528 \\
+K-ML1024 & S-DSA87 & L5 & 13.89 & 14.06 & 35.44 & +1.2 & +155.1 & 7795 \\
+K-ML1024 & S-F1024 & L5 & 12.35 & 12.46 & 40.57 & +0.9 & +228.4 & 4442 \\
+K-HQC128 & S-DSA44 & L1 & 153.68 & 153.89 & 211.48 & +0.1 & +37.6 & 9134 \\
+K-HQC128 & S-F512 & L1 & 152.81 & 152.71 & 214.76 & -0.1 & +40.5 & 7367 \\
+K-HQC192 & S-DSA65 & L3 & 428.53 & 429.00 & 561.00 & +0.1 & +30.9 & 16841 \\
+K-HQC192 & S-SP192s & L3 & 3063.46 & 3027.43 & 4042.06 & -1.2 & +31.9 & 29756 \\
+K-HQC256 & S-DSA87 & L5 & 779.55 & 782.19 & 1067.25 & +0.3 & +36.9 & 26325 \\
+K-HQC256 & S-F1024 & L5 & 779.50 & 780.90 & 1006.96 & +0.2 & +29.2 & 22967 \\
+K-MCE348 & S-DSA44 & L1 & 405.64 & 425.86 & 544.53 & +5.0 & +34.2 & 263668 \\
+K-MCE348 & S-F512 & L1 & 375.19 & 398.18 & 609.10 & +6.1 & +62.3 & 261905 \\
+K-MCE460 & S-DSA65 & L3 & 1616.95 & 1130.81 & 2958.94 & -30.1 & +83.0 & 527657 \\
+K-MCE460 & S-SP192s & L3 & 3862.24 & 3902.11 & 5737.69 & +1.0 & +48.6 & 540572 \\
+K-MCE819 & S-DSA87 & L5 & 8334.61 & 14272.63 & 13547.97 & +71.2 & +62.6 & 1362691 \\
+K-MCE819 & S-F1024 & L5 & 23719.44 & 10734.54 & 21202.67 & -54.7 & -10.6 & 1359335 \\
+\bottomrule\end{tabular}
+\label{tab:res-unified-manual}
+\end{table*}
+
+\subsection{DDoS Impact on PQC}
+\begin{table}[t]
+\centering
+\caption{DDoS impact on PQC handshake latency by NIST level (latest run).}
+\footnotesize
+\begin{tabular}{@{}lrrrrr@{}}\toprule
+Level & D-NO ms & D-XGB ms & D-TST ms & XGB $\Delta$ ms & TST $\Delta$ ms \\ \midrule
+L1 & 699.37 & 688.86 & 901.32 & -10.51 & +201.95 \\
+L3 & 1939.10 & 1852.59 & 2791.27 & -86.51 & +852.17 \\
+L5 & 6582.57 & 4577.05 & 6527.46 & -2005.52 & -55.11 \\
+\bottomrule\end{tabular}
+\label{tab:res-ddos-on-pqc-manual}
+\end{table}
+
+\subsection{PQC Impact on DDoS}
+\begin{table}[t]
+\centering
+\caption{PQC family impact on DDoS detector overhead (latest run).}
+\footnotesize
+\begin{tabular}{@{}lrrrr@{}}\toprule
+KEM family & XGB $\Delta P$ mW & TST $\Delta P$ mW & XGB $\Delta$CPU\% & TST $\Delta$CPU\% \\ \midrule
+ML-KEM & 949.5 & 977.3 & 25.4 & 74.1 \\
+HQC & 939.6 & 989.4 & 25.2 & 64.6 \\
+Classic-McEliece & 922.6 & 1058.3 & 25.4 & 63.2 \\
+\bottomrule\end{tabular}
+\label{tab:res-pqc-on-ddos-manual}
+\end{table}

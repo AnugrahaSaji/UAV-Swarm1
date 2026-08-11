@@ -1,0 +1,65 @@
+{"_meta": {"gap_index": 815, "gap_ms": 257.4488499760628, "start_idx": 810, "end_idx": 821}}
+{"recv_mono_ms": 145135008.596038, "sender_ip": "192.168.0.102", "seq": 889, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 97.8}}
+{"recv_mono_ms": 145135213.902824, "sender_ip": "192.168.0.102", "seq": 890, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 80.7}}
+{"recv_mono_ms": 145135417.153294, "sender_ip": "192.168.0.102", "seq": 891, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 51.2}}
+{"recv_mono_ms": 145135621.940431, "sender_ip": "192.168.0.102", "seq": 892, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 41.6}}
+{"recv_mono_ms": 145135827.439107, "sender_ip": "192.168.0.102", "seq": 893, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 46.2}}
+{"recv_mono_ms": 145136032.249893, "sender_ip": "192.168.0.102", "seq": 894, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 55.6}}
+{"recv_mono_ms": 145136289.698743, "sender_ip": "192.168.0.102", "seq": 895, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 86.1}}
+{"recv_mono_ms": 145136496.23292002, "sender_ip": "192.168.0.102", "seq": 896, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 92.5}}
+{"recv_mono_ms": 145136702.652208, "sender_ip": "192.168.0.102", "seq": 897, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 71.8}}
+{"recv_mono_ms": 145136908.396199, "sender_ip": "192.168.0.102", "seq": 898, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 57.8}}
+{"recv_mono_ms": 145137113.35579997, "sender_ip": "192.168.0.102", "seq": 899, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 56.6}}
+{"recv_mono_ms": 145137318.057642, "sender_ip": "192.168.0.102", "seq": 900, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 66.5}}
+{"_meta": {"gap_index": 921, "gap_ms": 276.161524027586, "start_idx": 916, "end_idx": 927}}
+{"recv_mono_ms": 145156773.455049, "sender_ip": "192.168.0.102", "seq": 995, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 54.5}}
+{"recv_mono_ms": 145156977.881503, "sender_ip": "192.168.0.102", "seq": 996, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 43.5}}
+{"recv_mono_ms": 145157182.250828, "sender_ip": "192.168.0.102", "seq": 997, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 57.9}}
+{"recv_mono_ms": 145157387.988117, "sender_ip": "192.168.0.102", "seq": 998, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 65.0}}
+{"recv_mono_ms": 145157600.098914, "sender_ip": "192.168.0.102", "seq": 999, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 81.0}}
+{"recv_mono_ms": 145157808.63542798, "sender_ip": "192.168.0.102", "seq": 1000, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 70.5}}
+{"recv_mono_ms": 145158084.796952, "sender_ip": "192.168.0.102", "seq": 1001, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 88.6}}
+{"recv_mono_ms": 145158312.48541602, "sender_ip": "192.168.0.102", "seq": 1002, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145158552.23609802, "sender_ip": "192.168.0.102", "seq": 1003, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145158805.376908, "sender_ip": "192.168.0.102", "seq": 1004, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159038.962991, "sender_ip": "192.168.0.102", "seq": 1005, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159281.02751002, "sender_ip": "192.168.0.102", "seq": 1006, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"_meta": {"gap_index": 924, "gap_ms": 253.14080998301506, "start_idx": 919, "end_idx": 930}}
+{"recv_mono_ms": 145157387.988117, "sender_ip": "192.168.0.102", "seq": 998, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 65.0}}
+{"recv_mono_ms": 145157600.098914, "sender_ip": "192.168.0.102", "seq": 999, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 81.0}}
+{"recv_mono_ms": 145157808.63542798, "sender_ip": "192.168.0.102", "seq": 1000, "summary": {"rx_pps": 5.0, "silence_ms": 0, "cpu_pct": 70.5}}
+{"recv_mono_ms": 145158084.796952, "sender_ip": "192.168.0.102", "seq": 1001, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 88.6}}
+{"recv_mono_ms": 145158312.48541602, "sender_ip": "192.168.0.102", "seq": 1002, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145158552.23609802, "sender_ip": "192.168.0.102", "seq": 1003, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145158805.376908, "sender_ip": "192.168.0.102", "seq": 1004, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159038.962991, "sender_ip": "192.168.0.102", "seq": 1005, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159281.02751002, "sender_ip": "192.168.0.102", "seq": 1006, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159529.637166, "sender_ip": "192.168.0.102", "seq": 1007, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159782.658254, "sender_ip": "192.168.0.102", "seq": 1008, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159993.07465997, "sender_ip": "192.168.0.102", "seq": 1009, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 98.9}}
+{"_meta": {"gap_index": 928, "gap_ms": 253.02108800411224, "start_idx": 923, "end_idx": 934}}
+{"recv_mono_ms": 145158312.48541602, "sender_ip": "192.168.0.102", "seq": 1002, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145158552.23609802, "sender_ip": "192.168.0.102", "seq": 1003, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145158805.376908, "sender_ip": "192.168.0.102", "seq": 1004, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159038.962991, "sender_ip": "192.168.0.102", "seq": 1005, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159281.02751002, "sender_ip": "192.168.0.102", "seq": 1006, "summary": {"rx_pps": 4.9, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159529.637166, "sender_ip": "192.168.0.102", "seq": 1007, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159782.658254, "sender_ip": "192.168.0.102", "seq": 1008, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145159993.07465997, "sender_ip": "192.168.0.102", "seq": 1009, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 98.9}}
+{"recv_mono_ms": 145160217.13950902, "sender_ip": "192.168.0.102", "seq": 1010, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 96.2}}
+{"recv_mono_ms": 145160424.205652, "sender_ip": "192.168.0.102", "seq": 1011, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 83.9}}
+{"recv_mono_ms": 145160629.846441, "sender_ip": "192.168.0.102", "seq": 1012, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 76.4}}
+{"recv_mono_ms": 145160848.788746, "sender_ip": "192.168.0.102", "seq": 1013, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 88.6}}
+{"_meta": {"gap_index": 966, "gap_ms": 264.8316030204296, "start_idx": 961, "end_idx": 972}}
+{"recv_mono_ms": 145166448.681933, "sender_ip": "192.168.0.102", "seq": 1040, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 40.1}}
+{"recv_mono_ms": 145166652.62244302, "sender_ip": "192.168.0.102", "seq": 1041, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 39.1}}
+{"recv_mono_ms": 145166871.27876702, "sender_ip": "192.168.0.102", "seq": 1042, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 78.1}}
+{"recv_mono_ms": 145167094.501763, "sender_ip": "192.168.0.102", "seq": 1043, "summary": {"rx_pps": 4.8, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145167326.78210402, "sender_ip": "192.168.0.102", "seq": 1044, "summary": {"rx_pps": 4.7, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145167552.71204898, "sender_ip": "192.168.0.102", "seq": 1045, "summary": {"rx_pps": 4.7, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145167817.543652, "sender_ip": "192.168.0.102", "seq": 1046, "summary": {"rx_pps": 4.7, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145168068.741664, "sender_ip": "192.168.0.102", "seq": 1047, "summary": {"rx_pps": 4.7, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145168311.064314, "sender_ip": "192.168.0.102", "seq": 1048, "summary": {"rx_pps": 4.7, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145168553.947242, "sender_ip": "192.168.0.102", "seq": 1049, "summary": {"rx_pps": 4.7, "silence_ms": 0, "cpu_pct": 100.0}}
+{"recv_mono_ms": 145168783.375135, "sender_ip": "192.168.0.102", "seq": 1050, "summary": {"rx_pps": 4.7, "silence_ms": 0, "cpu_pct": 81.0}}
+{"recv_mono_ms": 145168986.41260698, "sender_ip": "192.168.0.102", "seq": 1051, "summary": {"rx_pps": 4.7, "silence_ms": 0, "cpu_pct": 58.1}}

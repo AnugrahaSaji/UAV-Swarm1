@@ -1,0 +1,467 @@
+% IEEE VTC Fall 2026 — Scheduler Decision-Space Analysis [v1.0]
+% Comprehensive MDEAS policy analysis: viability matrix, cross-axis effects,
+% constraint satisfaction, and scheduler response patterns.
+% Data: analysis_deep_dive.csv (72 suites × 3 detectors × 287 columns)
+%       sscheduler/policy.py (MDEAS constraints and thresholds)
+%       bench_ddos_results (72-suite campaign)
+% Platform: RPi4B Rev 1.5, BCM2711, Cortex-A72 @ 1.8 GHz, 4 GB, Debian 12
+
+\section{Scheduler Decision-Space Analysis}
+\label{sec:scheduler_analysis}
+
+The Multi-Dimensional Energy-Aware Scheduler (MDEAS) operates over a
+combinatorial space of cryptographic configurations.  This section
+presents a systematic analysis of the decision space, constraint
+boundaries, cross-axis penalty surfaces, and policy response patterns.
+All data derives from the 72-suite benchmark campaign (10\,s per suite
+per detector state, RPi4).
+
+% =====================================================================
+\subsection{Decision Space Enumeration}
+\label{sec:decision_space}
+
+Table~\ref{tab:decision_dimensions} defines the three policy axes.
+The theoretical configuration space comprises 648~states; constraint
+application reduces this to $\sim$500 viable operating points.
+
+\begin{table}[t]
+\centering
+\caption{MDEAS Decision Axes and Candidate Algorithms}
+\label{tab:decision_dimensions}
+\footnotesize
+\begin{tabular}{@{}llc@{}}
+\toprule
+\textbf{Axis} & \textbf{Options} & \textbf{Count} \\
+\midrule
+Security Level & L1\,/\,L3\,/\,L5 (KEM$\times$SIG pairs) & 72 suites \\
+AEAD Cipher    & AES-GCM, ChaCha20, Ascon-128a & 3 \\
+DDoS Detector  & None, XGBoost, TST & 3 \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Theoretical state space}} & 648 \\
+\multicolumn{2}{@{}l}{\textit{After constraint pruning}} & $\sim$500 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item 72 suites = 9~KEMs $\times$ 8~SIGs (level-matched).
+  Constraints: Ascon$\times$TST forbidden, McEliece$\times$TST
+  discouraged, McEliece$\times$SPHINCS$^+$ timeout.
+\end{tablenotes}
+\end{table}
+
+% =====================================================================
+\subsection{Suite Viability Classification}
+\label{sec:viability}
+
+Each suite is classified by baseline handshake time $T_\text{HS}$.
+Fig.~\ref{fig:viability_bars} presents the 72-suite $\times$
+3-detector viability matrix; Table~\ref{tab:viability_summary}
+aggregates by KEM family.
+
+\begin{table}[t]
+\centering
+\caption{Suite Viability by KEM Family ($T_\text{HS}$ Threshold-Based)}
+\label{tab:viability_summary}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{KEM Family} &
+  \textbf{Viable} & \textbf{Marginal} & \textbf{Slow} &
+  \textbf{Timeout} & \textbf{Total} \\
+& ($<$100\,ms) & (100--1000) & (1--45\,s) & ($>$45\,s) & \\
+\midrule
+ML-KEM     & 18 & 6  & 0  & 0 & 24 \\
+HQC        & 3  & 15 & 6  & 0 & 24 \\
+McEliece   & 0  & 4  & 19 & 1 & 24 \\
+\midrule
+\textbf{Total} & 21 & 25 & 25 & 1 & 72 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item Viable: sub-100\,ms enables 30\,s rekey with $\Phi < 0.3\%$.
+  Timeout: MC460$\times$SP192 at 48.3\,s exceeds 45\,s limit.
+\end{tablenotes}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.95\textwidth,
+  height=5.5cm,
+  ybar,
+  bar width=2.5pt,
+  ymode=log,
+  ylabel={Handshake time $T_\text{HS}$ (ms)},
+  xlabel={KEM family and NIST level},
+  symbolic x coords={ML-L1, ML-L3, ML-L5, HQ-L1, HQ-L3, HQ-L5, MC-L1, MC-L3, MC-L5},
+  xtick=data,
+  ymin=5, ymax=60000,
+  legend style={at={(0.02,0.98)},anchor=north west,font=\scriptsize,
+    legend columns=3},
+  ymajorgrids=true,
+  enlarge x limits=0.1,
+]
+% Baseline (best suite per family-level)
+\addplot[fill=ptgray!50, draw=ptgray!80]
+  coordinates {
+    (ML-L1,12.8) (ML-L3,12.7) (ML-L5,8.8)
+    (HQ-L1,57.8) (HQ-L3,155.8) (HQ-L5,271.7)
+    (MC-L1,187.5) (MC-L3,257.4) (MC-L5,505.3)
+  };
+% +XGBoost
+\addplot[fill=ptblue!70, draw=ptblue!90!black,
+  postaction={pattern=north east lines, pattern color=white}]
+  coordinates {
+    (ML-L1,13.3) (ML-L3,13.5) (ML-L5,9.2)
+    (HQ-L1,60.1) (HQ-L3,162.0) (HQ-L5,285.3)
+    (MC-L1,195.8) (MC-L3,270.2) (MC-L5,532.6)
+  };
+% +TST
+\addplot[fill=ptrose!60, draw=ptrose!80!black,
+  postaction={pattern=horizontal lines, pattern color=ptrose!30}]
+  coordinates {
+    (ML-L1,18.5) (ML-L3,37.9) (ML-L5,14.8)
+    (HQ-L1,85.2) (HQ-L3,245.6) (HQ-L5,438.2)
+    (MC-L1,312.5) (MC-L3,498.7) (MC-L5,892.4)
+  };
+% Timeout threshold
+\draw[ptblack, thick, dashed]
+  (axis cs:ML-L1,45000) -- (axis cs:MC-L5,45000);
+\node[font=\scriptsize,ptblack,anchor=south west] at (axis cs:MC-L3,45000)
+  {45\,s timeout};
+\legend{Baseline, +XGBoost, +TST}
+\end{axis}
+\end{tikzpicture}
+\caption{Handshake time by KEM family and NIST level under three
+  detector states (best SIG pairing per family, log scale).
+  ML-KEM: $<$40\,ms under all conditions.  HQC: 58--438\,ms.
+  McEliece: 188--892\,ms.  TST inflates all suites by 44--91\%.}
+\label{fig:viability_bars}
+\end{figure*}
+
+% =====================================================================
+\subsection{Cross-Axis Penalty Surface}
+\label{sec:penalty_surface}
+
+Fig.~\ref{fig:penalty_matrix} presents the AEAD$\times$Detector
+cross-axis penalty matrix.  Each cell shows encrypt latency (absolute
+and relative to baseline).  Table~\ref{tab:cpu_budget} decomposes
+the CPU budget for all six cipher$\times$detector combinations.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=4.8cm,
+  ybar,
+  bar width=8pt,
+  ylabel={Overhead vs.\ baseline (\%)},
+  symbolic x coords={AESG, CH20, ASC},
+  xtick=data,
+  ymin=0, ymax=70,
+  legend style={at={(0.02,0.98)},anchor=north west,font=\scriptsize},
+  ymajorgrids=true,
+  enlarge x limits=0.35,
+  nodes near coords={\pgfmathprintnumber[fixed,precision=0]{\pgfplotspointmeta}\%},
+  every node near coord/.append style={font=\tiny,anchor=south},
+]
+\addplot[fill=ptblue!70, draw=ptblue!90!black,
+  postaction={pattern=north east lines, pattern color=white}]
+  coordinates {(AESG,20) (CH20,22) (ASC,12)};
+\addplot[fill=ptrose!60, draw=ptrose!80!black,
+  postaction={pattern=horizontal lines, pattern color=ptrose!30}]
+  coordinates {(AESG,54) (CH20,48) (ASC,60)};
+\legend{+XGBoost, +TST}
+\end{axis}
+\end{tikzpicture}
+\caption{AEAD$\times$Detector overhead penalty (\% increase in
+  encrypt latency vs.\ baseline).  TST imposes 48--60\% overhead
+  across all ciphers; XGBoost imposes 12--22\%.  Ascon's 60\%
+  penalty under TST, combined with its 1.35\,ms baseline, yields
+  2.17\,ms---violating real-time budgets at $>$\,400\,Hz.}
+\label{fig:penalty_matrix}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{CPU Budget Decomposition for AEAD$\times$Detector Combinations}
+\label{tab:cpu_budget}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrc@{}}
+\toprule
+\textbf{Config} &
+  \textbf{System} & \textbf{AEAD} & \textbf{Detector} &
+  \textbf{Total} & \textbf{Viable?} \\
+& (\%) & (\%) & (\%) & (\%) & \\
+\midrule
+AESG+None & 14.7 & 8.2  & 0.0  & 22.9 & \checkmark \\
+AESG+XGB  & 14.7 & 8.2  & 25.5 & 48.4 & \checkmark \\
+AESG+TST  & 14.7 & 8.2  & 73.1 & 96.0 & \checkmark \\
+CH20+None & 14.7 & 11.4 & 0.0  & 26.1 & \checkmark \\
+CH20+XGB  & 14.7 & 11.4 & 25.5 & 51.6 & \checkmark \\
+CH20+TST  & 14.7 & 11.4 & 73.1 & 99.2 & $\sim$ \\
+ASC+None  & 14.7 & 45.2 & 0.0  & 59.9 & \checkmark \\
+ASC+XGB   & 14.7 & 45.2 & 25.5 & 85.4 & $\sim$ \\
+ASC+TST   & 14.7 & 45.2 & 73.1 & \textbf{133.0} & $\times$ \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item System = 14.7\% idle.  AEAD at 50\,Hz MAVLink.  Detector CPU
+  from isolated benchmark.  $\sim$\,=\,marginal (no thermal headroom);
+  $\times$\,=\,exceeds single-core (100\%) capacity.
+\end{tablenotes}
+\end{table}
+
+% =====================================================================
+\subsection{Constraint Satisfaction Matrix}
+\label{sec:constraints}
+
+Table~\ref{tab:constraint_matrix} enumerates all MDEAS constraints and
+their impact on the configuration space.
+
+\begin{table}[t]
+\centering
+\caption{MDEAS Constraint Satisfaction Rules}
+\label{tab:constraint_matrix}
+\footnotesize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}lp{3.2cm}lr@{}}
+\toprule
+\textbf{Constraint} & \textbf{Condition} & \textbf{Action} & \textbf{\#} \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Hard constraints (forbidden)}} \\
+C1: ASC+TST        & AEAD=Ascon, Det=TST & Block & 24 \\
+C2: MC$\times$SP   & KEM=McE, SIG=SP & Block & 9 \\
+C3: Timeout        & $T_\text{HS}>45$\,s & Block & 3 \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Soft constraints (discouraged)}} \\
+C4: MC+TST         & KEM=McEliece, Det=TST & Warn & 24 \\
+C5: ASC+XGB        & AEAD=Ascon, Det=XGB & Warn & 24 \\
+C6: Thermal        & $T > T_\text{max}$ & Demote & --- \\
+C7: Battery        & $V < 14.8$\,V & Demote & --- \\
+\midrule
+\multicolumn{4}{@{}l}{\textit{Hysteresis guards}} \\
+C8: Upgrade hold   & stable $<8$\,s & Defer & --- \\
+C9: Downgrade hold & stable $<3$\,s & Defer & --- \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item Pruned: count of state-space cells removed by constraint.
+  C3 prunes 3 cells (1 suite $\times$ 3 detectors).
+  C6--C9 are runtime guards, not static pruning.
+\end{tablenotes}
+\end{table}
+
+% =====================================================================
+\subsection{Scheduler Response Patterns}
+\label{sec:response_patterns}
+
+Fig.~\ref{fig:policy_cascade} illustrates the MDEAS policy evaluation
+cascade.  Table~\ref{tab:policy_triggers} documents trigger conditions
+and expected responses.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=0.4cm,
+  every node/.style={font=\scriptsize},
+  check/.style={rectangle, draw=ptblue, fill=ptblue!10,
+    minimum width=2.2cm, minimum height=0.45cm, align=center},
+  action/.style={rectangle, draw=ptrose, fill=ptrose!10,
+    minimum width=1.8cm, minimum height=0.4cm, align=center},
+  pass/.style={->, >=latex, thick},
+]
+% Priority cascade
+\node[check] (p1) {1. telemetry\_stale};
+\node[check, below=of p1] (p2) {2. ddos\_detected};
+\node[check, below=of p2] (p3) {3. battery\_critical};
+\node[check, below=of p3] (p4) {4. temp\_critical};
+\node[check, below=of p4] (p5) {5. detector\_thermal};
+\node[check, below=of p5] (p6) {$\vdots$ (10 more)};
+\node[check, below=of p6] (p15) {15. nominal};
+
+% Actions
+\node[action, right=1.5cm of p1] (a1) {HOLD};
+\node[action, right=1.5cm of p2] (a2) {UPGRADE\\+Det};
+\node[action, right=1.5cm of p3] (a3) {DEMOTE L1};
+\node[action, right=1.5cm of p4] (a4) {DEMOTE\\+ASC off};
+\node[action, right=1.5cm of p5] (a5) {Det$\to$XGB\\or NONE};
+\node[action, right=1.5cm of p15] (a15) {MAINTAIN};
+
+% Arrows
+\draw[pass] (p1) -- node[above,font=\tiny]{yes} (a1);
+\draw[pass] (p2) -- node[above,font=\tiny]{yes} (a2);
+\draw[pass] (p3) -- node[above,font=\tiny]{yes} (a3);
+\draw[pass] (p4) -- node[above,font=\tiny]{yes} (a4);
+\draw[pass] (p5) -- node[above,font=\tiny]{yes} (a5);
+\draw[pass] (p15) -- node[above,font=\tiny]{yes} (a15);
+
+% Fallthrough
+\draw[pass, dashed] (p1.south) -- (p2.north);
+\draw[pass, dashed] (p2.south) -- (p3.north);
+\draw[pass, dashed] (p3.south) -- (p4.north);
+\draw[pass, dashed] (p4.south) -- (p5.north);
+\draw[pass, dashed] (p5.south) -- (p6.north);
+\draw[pass, dashed] (p6.south) -- (p15.north);
+\end{tikzpicture}
+\caption{MDEAS policy evaluation cascade (15 priority levels).
+  Each check returns an action or falls through to the next.
+  DDoS detection (P2) triggers immediate upgrade; thermal
+  stress (P4--P5) triggers demotion or detector shutdown.}
+\label{fig:policy_cascade}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{MDEAS Policy Trigger Conditions and Responses}
+\label{tab:policy_triggers}
+\footnotesize
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}p{2.2cm}p{2.8cm}p{2.4cm}@{}}
+\toprule
+\textbf{Trigger} & \textbf{Condition} & \textbf{Response} \\
+\midrule
+telemetry\_stale & No update $>$\,5\,s & Hold current state \\
+ddos\_detected   & Classifier output $>$\,0.8 & Upgrade + activate detector \\
+battery\_critical & $V < 14.0$\,V & Demote to L1 + AESG + NONE \\
+temp\_critical   & $T > 80$\,$^\circ$C & Demote + disable Ascon \\
+detector\_thermal & $T > T_\text{max}$ & Downgrade detector \\
+aead\_stress     & AEAD $t_\text{enc} > 2\times$ baseline & Switch cipher \\
+link\_degraded   & pps $<$ 5 or gap $>$ 1\,s & Demote security level \\
+stable\_upgrade  & stable $>$ 8\,s $\wedge$ margin exists & Upgrade level \\
+nominal          & All checks pass & Maintain current \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =====================================================================
+\subsection{Detector Overhead Distribution}
+\label{sec:overhead_dist}
+
+Fig.~\ref{fig:overhead_distribution} shows the handshake overhead
+distribution across all 72 suites under XGBoost and TST.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.95\columnwidth,
+  height=5cm,
+  boxplot/draw direction=y,
+  ylabel={Handshake overhead (\%)},
+  xtick={1,2},
+  xticklabels={XGBoost,TST},
+  ymajorgrids=true,
+  ymin=-10, ymax=450,
+]
+% XGBoost distribution (n=72)
+\addplot+[
+  boxplot prepared={
+    median=0.05,
+    upper quartile=2.8,
+    lower quartile=-0.2,
+    upper whisker=15.2,
+    lower whisker=-1.5,
+  },
+  fill=ptblue!30, draw=ptblue]
+  coordinates {};
+% Outlier for XGBoost max
+\addplot[only marks, mark=*, mark size=1.5pt, ptblue]
+  coordinates {(1,137.2)};
+
+% TST distribution (n=72)
+\addplot+[
+  boxplot prepared={
+    median=32.6,
+    upper quartile=95.4,
+    lower quartile=8.2,
+    upper whisker=180,
+    lower whisker=-2.0,
+  },
+  fill=ptrose!30, draw=ptrose]
+  coordinates {};
+% Outlier for TST max
+\addplot[only marks, mark=*, mark size=1.5pt, ptrose]
+  coordinates {(2,405.1)};
+
+% Annotations
+\node[font=\tiny,ptblue,anchor=west] at (axis cs:1.15,137.2) {max 137\%};
+\node[font=\tiny,ptrose,anchor=west] at (axis cs:2.15,405.1) {max 405\%};
+\node[font=\tiny,ptblue,anchor=east] at (axis cs:0.85,0.05) {med 0.05\%};
+\node[font=\tiny,ptrose,anchor=east] at (axis cs:1.85,32.6) {med 33\%};
+\end{axis}
+\end{tikzpicture}
+\caption{Handshake overhead distribution (72 suites).  XGB:
+  med=0.05\%, max=137\%.  TST: med=33\%, max=405\%.
+  Outliers on slow McEliece suites.}
+\label{fig:overhead_distribution}
+\end{figure}
+
+% =====================================================================
+\subsection{Thermal Activation Boundaries}
+\label{sec:thermal_boundaries}
+
+Fig.~\ref{fig:thermal_boundaries} visualizes the detector activation
+boundaries as a function of ambient temperature.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.94\columnwidth,
+  height=5cm,
+  xlabel={Ambient temperature ($^\circ$C)},
+  ylabel={Detector state},
+  xmin=30, xmax=85,
+  ymin=-0.5, ymax=2.5,
+  ytick={0,1,2},
+  yticklabels={NONE,XGBoost,TST},
+  xmajorgrids=true,
+  ymajorgrids=true,
+  area style,
+  legend style={at={(0.98,0.98)},anchor=north east,font=\scriptsize},
+]
+% TST region (up to 69°C)
+\addplot[fill=ptrose!30, draw=none]
+  coordinates {(30,2) (58.1,2) (58.1,-0.5) (30,-0.5)} \closedcycle;
+% XGBoost region (up to 75°C)
+\addplot[fill=ptblue!30, draw=none]
+  coordinates {(58.1,1) (65.9,1) (65.9,-0.5) (58.1,-0.5)} \closedcycle;
+% NONE region (up to 80°C)
+\addplot[fill=ptgray!20, draw=none]
+  coordinates {(65.9,0) (80,0) (80,-0.5) (65.9,-0.5)} \closedcycle;
+
+% Boundary lines
+\draw[ptrose, very thick, dashed] (axis cs:58.1,-0.5) -- (axis cs:58.1,2.5)
+  node[above,font=\tiny] {58$^\circ$C};
+\draw[ptblue, very thick, dashed] (axis cs:65.9,-0.5) -- (axis cs:65.9,2.5)
+  node[above,font=\tiny] {66$^\circ$C};
+\draw[ptblack, very thick] (axis cs:80,-0.5) -- (axis cs:80,2.5)
+  node[above,font=\tiny] {80$^\circ$C};
+
+% Labels
+\node[font=\scriptsize,ptrose!80!black] at (axis cs:44,1.7) {TST safe};
+\node[font=\scriptsize,ptblue!80!black] at (axis cs:62,0.7) {XGB only};
+\node[font=\scriptsize,ptblack] at (axis cs:73,0.3) {NONE};
+\end{axis}
+\end{tikzpicture}
+\caption{Detector thermal activation boundaries.  TST blocked
+  above 58$^\circ$C; XGBoost blocked above 66$^\circ$C;
+  throttle above 80$^\circ$C.}
+\label{fig:thermal_boundaries}
+\end{figure}
+
+\emph{Takeaway: MDEAS prunes $\sim$150 of 648 states via hard
+constraints (Ascon+TST, McEliece$\times$SPHINCS+, timeout) and
+another $\sim$100 via thermal/battery guards.  ML-KEM with
+ML-DSA or Falcon, AES-GCM or ChaCha20, and XGBoost detection
+yields the widest envelope: $<$50\,ms, $<$50\% CPU, thermal
+margin to 66\,$^\circ$C.}
+

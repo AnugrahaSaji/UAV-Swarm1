@@ -1,0 +1,145 @@
+=== RASPBERRY PI SYSTEM INFORMATION ===
+Generated: 2026-01-17T02:28:38+05:30
+
+=== HOSTNAME ===
+uavpi
+
+=== KERNEL ===
+Linux uavpi 6.12.47+rpt-rpi-v8 #1 SMP PREEMPT Debian 1:6.12.47-1+rpt1~bookworm (2025-09-16) aarch64 GNU/Linux
+
+=== OS RELEASE ===
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+NAME="Debian GNU/Linux"
+VERSION_ID="12"
+VERSION="12 (bookworm)"
+VERSION_CODENAME=bookworm
+ID=debian
+HOME_URL="https://www.debian.org/"
+SUPPORT_URL="https://www.debian.org/support"
+BUG_REPORT_URL="https://bugs.debian.org/"
+
+=== CPU INFO ===
+processor	: 0
+BogoMIPS	: 108.00
+Features	: fp asimd evtstrm crc32 cpuid
+CPU implementer	: 0x41
+CPU architecture: 8
+CPU variant	: 0x0
+CPU part	: 0xd08
+CPU revision	: 3
+
+processor	: 1
+BogoMIPS	: 108.00
+Features	: fp asimd evtstrm crc32 cpuid
+CPU implementer	: 0x41
+CPU architecture: 8
+CPU variant	: 0x0
+CPU part	: 0xd08
+CPU revision	: 3
+
+processor	: 2
+BogoMIPS	: 108.00
+Features	: fp asimd evtstrm crc32 cpuid
+CPU implementer	: 0x41
+CPU architecture: 8
+CPU variant	: 0x0
+CPU part	: 0xd08
+CPU revision	: 3
+
+processor	: 3
+BogoMIPS	: 108.00
+Features	: fp asimd evtstrm crc32 cpuid
+CPU implementer	: 0x41
+CPU architecture: 8
+CPU variant	: 0x0
+CPU part	: 0xd08
+CPU revision	: 3
+
+Revision	: c03115
+Serial		: 10000000dc83d475
+Model		: Raspberry Pi 4 Model B Rev 1.5
+
+=== CPU FREQUENCY ===
+Governor: performance
+Current Freq: 1800000 kHz
+Min Freq: 1800000 kHz
+Max Freq: 1800000 kHz
+Available Frequencies: 600000 700000 800000 900000 1000000 1100000 1200000 1300000 1400000 1500000 1600000 1700000 1800000 
+Available Governors: conservative ondemand userspace powersave performance schedutil 
+
+=== MEMORY ===
+MemTotal:        3887992 kB
+MemFree:         1987536 kB
+MemAvailable:    3574300 kB
+Buffers:          350888 kB
+Cached:          1151844 kB
+SwapCached:            0 kB
+Active:          1169252 kB
+Inactive:         446236 kB
+Active(anon):     113788 kB
+Inactive(anon):        0 kB
+Active(file):    1055464 kB
+Inactive(file):   446236 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+SwapTotal:        204796 kB
+SwapFree:         204796 kB
+Zswap:                 0 kB
+Zswapped:              0 kB
+Dirty:               972 kB
+Writeback:             0 kB
+
+=== TEMPERATURE ===
+temp=53.0'C
+
+=== VOLTAGE ===
+volt=0.9160V
+
+=== GPU MEMORY ===
+gpu=76M
+
+=== THROTTLING STATUS ===
+throttled=0x0
+
+=== I2C DEVICES (INA219 at 0x40) ===
+     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:                         -- -- -- -- -- -- -- -- 
+10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+40: 40 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+70: -- -- -- -- -- -- -- --                         
+
+=== USB DEVICES ===
+Bus 002 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+Bus 001 Device 003: ID 26ac:0011 3D Robotics PX4 FMU v2.x
+Bus 001 Device 002: ID 2109:3431 VIA Labs, Inc. Hub
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+
+=== DISK USAGE ===
+Filesystem      Size  Used Avail Use% Mounted on
+udev            1.6G     0  1.6G   0% /dev
+tmpfs           760M  940K  759M   1% /run
+/dev/mmcblk0p2   58G   46G  9.8G  83% /
+tmpfs           1.9G  8.0K  1.9G   1% /dev/shm
+tmpfs           5.0M   16K  5.0M   1% /run/lock
+/dev/mmcblk0p1  510M   78M  433M  16% /boot/firmware
+tmpfs           380M   40K  380M   1% /run/user/1000
+
+=== PYTHON VERSION ===
+Python 3.11.2
+
+=== GIT INFO ===
+Commit: e31628993a75fb431ae91f6b15a03b0d6321a5f5
+Branch: main
+
+=== LIBOQS VERSION (via cenv) ===
+N/A
+
+=== INSTALLED PYTHON PACKAGES ===
+ascon              0.0.9
+liboqs-python      0.14.0
+numpy              2.2.6
+pi-ina219          1.4.1
