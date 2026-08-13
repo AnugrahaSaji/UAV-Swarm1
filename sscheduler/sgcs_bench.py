@@ -71,8 +71,8 @@ except ImportError:
 # Configuration
 # =============================================================================
 
-DRONE_HOST = str(CONFIG.get("DRONE_HOST", "192.168.0.101"))
-GCS_HOST = str(CONFIG.get("GCS_HOST", "192.168.0.100"))
+DRONE_HOST = str(CONFIG.get("DRONE_HOST", "192.168.0.102"))
+GCS_HOST = str(CONFIG.get("GCS_HOST", "192.168.0.101"))
 GCS_CONTROL_HOST = str(CONFIG.get("GCS_CONTROL_HOST", "0.0.0.0"))
 GCS_CONTROL_PORT = int(CONFIG.get("GCS_CONTROL_PORT", 48080))
 

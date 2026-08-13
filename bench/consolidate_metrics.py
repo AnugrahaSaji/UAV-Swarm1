@@ -36,7 +36,7 @@ from core.config import CONFIG
 ROOT = Path(__file__).resolve().parents[1]
 LOGS_DIR = ROOT / "logs" / "full_benchmark"
 
-DRONE_HOST = str(CONFIG.get("DRONE_HOST", "192.168.0.100"))
+DRONE_HOST = str(CONFIG.get("DRONE_HOST", "192.168.0.102"))
 DRONE_USER = os.environ.get("DRONE_SSH_USER", "dev")
 DRONE_PROJECT_PATH = "~/secure-tunnel"
 
