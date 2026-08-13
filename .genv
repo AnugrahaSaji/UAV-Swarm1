@@ -10,7 +10,7 @@
 
 # ── Network Addresses ────────────────────────────────────────────────────────
 # LAN IP for data/control/telemetry planes
-GCS_HOST_LAN=192.168.0.100
+GCS_HOST_LAN=10.2.129.165
 TUNNEL_HOST_PROFILE=lan
 # Tailscale IP — SSH/Git maintenance ONLY
 GCS_HOST_TAILSCALE=100.106.181.122

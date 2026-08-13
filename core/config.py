@@ -20,9 +20,9 @@ except ImportError:
 
 # Baseline host defaults — read from environment (populated by .denv/.genv)
 # with hardcoded fallbacks for backward compatibility.
-_DRONE_HOST_LAN = os.getenv("DRONE_HOST_LAN", "192.168.0.101")
+_DRONE_HOST_LAN = os.getenv("DRONE_HOST_LAN", "10.2.142.211")
 _DRONE_HOST_TAILSCALE = os.getenv("DRONE_HOST_TAILSCALE", "100.101.93.23")
-_GCS_HOST_LAN = os.getenv("GCS_HOST_LAN", "192.168.0.100")
+_GCS_HOST_LAN = os.getenv("GCS_HOST_LAN", "10.2.129.165")
 _GCS_HOST_TAILSCALE = os.getenv("GCS_HOST_TAILSCALE", "100.101.93.24")
  
 def _resolve_host_defaults() -> tuple[str, str, str]:
@@ -51,8 +51,8 @@ _DEFAULT_DRONE_HOST, _DEFAULT_GCS_HOST, _HOST_PROFILE = _resolve_host_defaults()
 _LAB_PASSWORD_DEFAULT = os.getenv("PQC_LAB_PASSWORD", "")
 
 
-_DRONE1_HOST = os.getenv("DRONE1_HOST", os.getenv("DRONE_HOST_LAN", "192.168.0.101"))
-_DRONE2_HOST = os.getenv("DRONE2_HOST", "192.168.0.106")
+_DRONE1_HOST = os.getenv("DRONE1_HOST", os.getenv("DRONE_HOST_LAN", "10.2.142.211"))
+_DRONE2_HOST = os.getenv("DRONE2_HOST", "10.2.142.211")
 
 _DEFAULT_DRONE_HOSTS: Dict[str, str] = {
     "drone1": _DRONE1_HOST,

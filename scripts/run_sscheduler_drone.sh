@@ -23,7 +23,7 @@ fi
 
 export DRONE_HOST="$(hostname -I | awk '{print $1}')"
 # Edit GCS_HOST below if needed
-export GCS_HOST="192.168.0.100"
+export GCS_HOST="10.2.129.165"
 
 cd "$(dirname "$0")/.." || exit 1
 cd sscheduler || exit 1
