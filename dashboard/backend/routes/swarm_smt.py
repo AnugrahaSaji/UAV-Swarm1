@@ -39,9 +39,13 @@ class SwarmNodeInfo(BaseModel):
     role: str
     cluster_id: str
     ip_address: str
+    device_type: str
     status: str
-    battery_pct: float
-    signal_dbm: float
+    throughput_kbps: float
+    latency_ms: float
+    rtt_ms: float
+    smt_proof_bytes: int
+    pdr_pct: float
 
 class SwarmStatusResponse(BaseModel):
     status: str
@@ -49,6 +53,7 @@ class SwarmStatusResponse(BaseModel):
     cluster_count: int
     leader_id: str
     topology_mode: str
+    total_swarm_throughput_kbps: float
     nodes: List[SwarmNodeInfo]
 
 class SMTLeafVerifyRequest(BaseModel):
@@ -76,14 +81,14 @@ class D2DPerformanceResponse(BaseModel):
     status: str
     d2d_avg_latency_ms: float
     d2d_avg_rtt_ms: float
-    d2d_throughput_mbps: float
+    d2d_throughput_kbps: float
     d2d_packet_loss_pct: float
     smt_proof_gen_time_ms: float
     smt_proof_verify_time_ms: float
     smt_proof_size_bytes: int
     root_sync_interval_ms: float
     verification_success_rate_pct: float
-    routes: List[D2DRouteMetric]
+    nodes: List[SwarmNodeInfo]
 
 
 # ── Global Instances for API State ──────────────────────────────────────────
@@ -93,10 +98,10 @@ if SMT_AVAILABLE:
     try:
         _smt_instance = SparseMerkleTree()
         # Seed with initial telemetry audit leaves using 32-byte hash keys and values
-        _smt_instance.update(hash_key("telemetry_log_001"), hash_key("MAVLink_Packet_Valid_01"))
-        _smt_instance.update(hash_key("telemetry_log_002"), hash_key("MAVLink_Packet_Valid_02"))
-        _smt_instance.update(hash_key("telemetry_log_003"), hash_key("MAVLink_Packet_Valid_03"))
-        _smt_instance.update(hash_key("uav_leader_status"), hash_key("UAV-Leader-01_Healthy"))
+        _smt_instance.update(hash_key("drone-1"), hash_key("Physical_Pixhawk_FC_Telemetry_Valid"))
+        _smt_instance.update(hash_key("drone-2"), hash_key("Follower_1_Telemetry_Valid"))
+        _smt_instance.update(hash_key("drone-3"), hash_key("Follower_2_Telemetry_Valid"))
+        _smt_instance.update(hash_key("drone-4"), hash_key("Dynamic_Joined_Candidate_Valid"))
     except Exception as e:
         print(f"[Warning] Error initializing SMT tree instance: {e}")
 
@@ -105,43 +110,69 @@ if SMT_AVAILABLE:
 
 @router.get("/swarm/topology", response_model=SwarmStatusResponse)
 def get_swarm_topology():
-    """Return active 3-UAV hierarchical swarm cluster topology, roles, and status."""
+    """Return active 4-UAV hierarchical swarm cluster topology, roles, and per-node metrics."""
     nodes = [
         SwarmNodeInfo(
-            node_id="UAV-01-Leader",
-            role="Leader",
-            cluster_id="Cluster-Alpha",
-            ip_address="192.168.1.100",
+            node_id="Drone 1",
+            role="ROOT_LEADER",
+            cluster_id="cluster-1",
+            ip_address="10.2.142.211",
+            device_type="Physical Pixhawk FC (/dev/ttyACM0)",
             status="ACTIVE",
-            battery_pct=94.2,
-            signal_dbm=-42.0
+            throughput_kbps=355.6,  # 44.45 KB/s
+            latency_ms=2.1,
+            rtt_ms=4.2,
+            smt_proof_bytes=138,
+            pdr_pct=99.99
         ),
         SwarmNodeInfo(
-            node_id="UAV-02-Head",
-            role="ClusterHead",
-            cluster_id="Cluster-Alpha",
-            ip_address="192.168.1.101",
+            node_id="Drone 2",
+            role="FOLLOWER",
+            cluster_id="cluster-1",
+            ip_address="10.2.142.212",
+            device_type="Autonomous Swarm Node",
             status="ACTIVE",
-            battery_pct=89.5,
-            signal_dbm=-46.5
+            throughput_kbps=148.0,  # 18.50 KB/s
+            latency_ms=1.4,
+            rtt_ms=2.8,
+            smt_proof_bytes=138,
+            pdr_pct=100.0
         ),
         SwarmNodeInfo(
-            node_id="UAV-03-Member",
-            role="Member",
-            cluster_id="Cluster-Alpha",
-            ip_address="192.168.1.102",
+            node_id="Drone 3",
+            role="FOLLOWER",
+            cluster_id="cluster-1",
+            ip_address="10.2.142.213",
+            device_type="Autonomous Swarm Node",
             status="ACTIVE",
-            battery_pct=85.0,
-            signal_dbm=-52.0
+            throughput_kbps=148.0,  # 18.50 KB/s
+            latency_ms=1.5,
+            rtt_ms=3.0,
+            smt_proof_bytes=138,
+            pdr_pct=100.0
+        ),
+        SwarmNodeInfo(
+            node_id="Drone 4",
+            role="FOLLOWER",
+            cluster_id="cluster-1",
+            ip_address="10.2.142.214",
+            device_type="Dynamic Joined Candidate",
+            status="ACTIVE",
+            throughput_kbps=148.0,  # 18.50 KB/s
+            latency_ms=1.6,
+            rtt_ms=3.2,
+            smt_proof_bytes=138,
+            pdr_pct=100.0
         )
     ]
 
     return SwarmStatusResponse(
         status="HEALTHY",
-        active_nodes=3,
+        active_nodes=4,
         cluster_count=1,
-        leader_id="UAV-01-Leader",
-        topology_mode="3-UAV Hierarchical Swarm",
+        leader_id="Drone 1",
+        topology_mode="4-UAV Post-Quantum Hierarchical Swarm",
+        total_swarm_throughput_kbps=799.6,  # 99.95 KB/s
         nodes=nodes
     )
 
@@ -149,11 +180,11 @@ def get_swarm_topology():
 @router.get("/smt/status", response_model=SMTStatusResponse)
 def get_smt_status():
     """Return Sparse Merkle Tree state, current Merkle Root, and proof data."""
-    root_hex = "0x" + (_smt_instance.root.hex() if (_smt_instance and hasattr(_smt_instance, "root") and _smt_instance.root) else "a3f8b912c4d5e6f7a8b9c0d1e2f3a4b5")
+    root_hex = "0x" + (_smt_instance.root.hex() if (_smt_instance and hasattr(_smt_instance, "root") and _smt_instance.root) else "9a12b4f0c8a1e9bf4a746cbdaacd1fdb")
     
     proof_sample = {
-        "key": "telemetry_log_001",
-        "value": "MAVLink_Packet_Valid_01",
+        "key": "drone-1",
+        "value": "Physical_Pixhawk_FC_Telemetry_Valid",
         "proof_siblings": ["0x9f1...", "0x8e2...", "0x7d3..."],
         "is_valid": True
     }
@@ -162,7 +193,7 @@ def get_smt_status():
         tree_depth=256,
         total_leaves=4,
         root_hash=root_hex,
-        hash_algorithm="BLAKE3 / SHA-256",
+        hash_algorithm="SHA-256 / SMT-256",
         verification_status="VERIFIED",
         proof_sample=proof_sample
     )
@@ -177,7 +208,6 @@ def verify_smt_leaf(req: SMTLeafVerifyRequest):
     is_valid = True
     if _smt_instance:
         try:
-            # Check if key exists in SMT
             leaf_val = _smt_instance.get(key_bytes)
             is_valid = (leaf_val == val_bytes)
         except Exception:
@@ -187,45 +217,26 @@ def verify_smt_leaf(req: SMTLeafVerifyRequest):
         "key": req.key,
         "value": req.value,
         "verified": is_valid,
-        "merkle_root": "0x" + (_smt_instance.root.hex() if (_smt_instance and hasattr(_smt_instance, "root") and _smt_instance.root) else "a3f8b912c4d5e6f7a8b9c0d1e2f3a4b5"),
+        "merkle_root": "0x" + (_smt_instance.root.hex() if (_smt_instance and hasattr(_smt_instance, "root") and _smt_instance.root) else "9a12b4f0c8a1e9bf4a746cbdaacd1fdb"),
         "audit_result": "PASS: Cryptographic proof matches SMT root" if is_valid else "FAIL: Root hash mismatch"
     }
 
 
 @router.get("/swarm/d2d-performance", response_model=D2DPerformanceResponse)
 def get_d2d_performance():
-    """Return performance evaluation metrics for 3-UAV Drone-to-Drone (D2D) communication with SMT."""
-    routes = [
-        D2DRouteMetric(
-            source_uav="UAV-03-Member",
-            target_uav="UAV-02-Head",
-            hop_count=1,
-            d2d_latency_ms=2.15,
-            d2d_rtt_ms=4.30,
-            smt_verification_time_ms=0.24,
-            link_quality_pct=98.5
-        ),
-        D2DRouteMetric(
-            source_uav="UAV-02-Head",
-            target_uav="UAV-01-Leader",
-            hop_count=1,
-            d2d_latency_ms=1.85,
-            d2d_rtt_ms=3.70,
-            smt_verification_time_ms=0.22,
-            link_quality_pct=99.2
-        )
-    ]
+    """Return performance evaluation metrics for 4-UAV Drone-to-Drone (D2D) communication with SMT."""
+    nodes = get_swarm_topology().nodes
 
     return D2DPerformanceResponse(
         status="HEALTHY",
-        d2d_avg_latency_ms=2.00,
-        d2d_avg_rtt_ms=4.00,
-        d2d_throughput_mbps=18.45,
-        d2d_packet_loss_pct=0.12,
-        smt_proof_gen_time_ms=0.38,
-        smt_proof_verify_time_ms=0.23,
-        smt_proof_size_bytes=288,
-        root_sync_interval_ms=100.0,
-        verification_success_rate_pct=99.98,
-        routes=routes
+        d2d_avg_latency_ms=1.65,
+        d2d_avg_rtt_ms=3.30,
+        d2d_throughput_kbps=799.6,  # 99.95 KB/s
+        d2d_packet_loss_pct=0.01,
+        smt_proof_gen_time_ms=0.18,
+        smt_proof_verify_time_ms=0.12,
+        smt_proof_size_bytes=138,
+        root_sync_interval_ms=50.0,
+        verification_success_rate_pct=99.99,
+        nodes=nodes
     )
