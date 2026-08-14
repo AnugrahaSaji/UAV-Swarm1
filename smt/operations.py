@@ -258,4 +258,4 @@ def op_collect_path(
             non_zero_siblings.append(sib_hash)
             path_mask |= 1 << level_idx
 
-    return value_hash, non_zero_siblings, path_mask
+    return value_hash, non_zero_siblings[::-1], path_mask
