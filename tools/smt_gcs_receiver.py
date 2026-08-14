@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import os
 import socket
 import sys
 import time
@@ -52,11 +53,6 @@ def main():
             total_received += 1
             msg_type = msg.get_type()
             msg_counts[msg_type] = msg_counts.get(msg_type, 0) + 1
-
-            # Simulate SMT Root compute on GCS side for received MAVLink message
-            sample_val = json.dumps({"type": msg_type, "sys": msg.get_srcSystem(), "comp": msg.get_srcComponent()}, sort_keys=True).encode("utf-8")
-            leaf_key = hashlib.sha256(b"drone-1-pixhawk").digest()
-            leaf_val = hashlib.sha256(sample_val).digest()
 
             if total_received % 10 == 1:
                 print(f"[{total_received:04d} MSGS] Type: {msg_type:18s} | SysID: {msg.get_srcSystem()} | CompID: {msg.get_srcComponent()} | Decrypted OK")
