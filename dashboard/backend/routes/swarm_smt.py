@@ -32,20 +32,16 @@ except Exception as e:
     print(f"[Warning] Swarm module import notice: {e}")
 
 
-# ── Schemas ──────────────────────────────────────────────────────────────────
+# ── Schemas matching Frontend SwarmSMTAudit.tsx ─────────────────────────────
 
 class SwarmNodeInfo(BaseModel):
     node_id: str
     role: str
     cluster_id: str
     ip_address: str
-    device_type: str
     status: str
-    throughput_kbps: float
-    latency_ms: float
-    rtt_ms: float
-    smt_proof_bytes: int
-    pdr_pct: float
+    battery_pct: float
+    signal_dbm: float
 
 class SwarmStatusResponse(BaseModel):
     status: str
@@ -53,7 +49,6 @@ class SwarmStatusResponse(BaseModel):
     cluster_count: int
     leader_id: str
     topology_mode: str
-    total_swarm_throughput_kbps: float
     nodes: List[SwarmNodeInfo]
 
 class SMTLeafVerifyRequest(BaseModel):
@@ -81,14 +76,14 @@ class D2DPerformanceResponse(BaseModel):
     status: str
     d2d_avg_latency_ms: float
     d2d_avg_rtt_ms: float
-    d2d_throughput_kbps: float
+    d2d_throughput_mbps: float
     d2d_packet_loss_pct: float
     smt_proof_gen_time_ms: float
     smt_proof_verify_time_ms: float
     smt_proof_size_bytes: int
     root_sync_interval_ms: float
     verification_success_rate_pct: float
-    nodes: List[SwarmNodeInfo]
+    routes: List[D2DRouteMetric]
 
 
 # ── Global Instances for API State ──────────────────────────────────────────
@@ -110,59 +105,43 @@ if SMT_AVAILABLE:
 
 @router.get("/swarm/topology", response_model=SwarmStatusResponse)
 def get_swarm_topology():
-    """Return active 4-UAV hierarchical swarm cluster topology, roles, and per-node metrics."""
+    """Return active 4-UAV hierarchical swarm cluster topology, roles, and status."""
     nodes = [
         SwarmNodeInfo(
-            node_id="Drone 1",
+            node_id="Drone-1-Leader",
             role="ROOT_LEADER",
             cluster_id="cluster-1",
             ip_address="10.2.142.211",
-            device_type="Physical Pixhawk FC (/dev/ttyACM0)",
             status="ACTIVE",
-            throughput_kbps=355.6,  # 44.45 KB/s
-            latency_ms=2.1,
-            rtt_ms=4.2,
-            smt_proof_bytes=138,
-            pdr_pct=99.99
+            battery_pct=96.5,
+            signal_dbm=-42.0
         ),
         SwarmNodeInfo(
-            node_id="Drone 2",
+            node_id="Drone-2-Follower1",
             role="FOLLOWER",
             cluster_id="cluster-1",
             ip_address="10.2.142.212",
-            device_type="Autonomous Swarm Node",
             status="ACTIVE",
-            throughput_kbps=148.0,  # 18.50 KB/s
-            latency_ms=1.4,
-            rtt_ms=2.8,
-            smt_proof_bytes=138,
-            pdr_pct=100.0
+            battery_pct=92.0,
+            signal_dbm=-46.5
         ),
         SwarmNodeInfo(
-            node_id="Drone 3",
+            node_id="Drone-3-Follower2",
             role="FOLLOWER",
             cluster_id="cluster-1",
             ip_address="10.2.142.213",
-            device_type="Autonomous Swarm Node",
             status="ACTIVE",
-            throughput_kbps=148.0,  # 18.50 KB/s
-            latency_ms=1.5,
-            rtt_ms=3.0,
-            smt_proof_bytes=138,
-            pdr_pct=100.0
+            battery_pct=88.5,
+            signal_dbm=-52.0
         ),
         SwarmNodeInfo(
-            node_id="Drone 4",
+            node_id="Drone-4-DynamicJoin",
             role="FOLLOWER",
             cluster_id="cluster-1",
             ip_address="10.2.142.214",
-            device_type="Dynamic Joined Candidate",
             status="ACTIVE",
-            throughput_kbps=148.0,  # 18.50 KB/s
-            latency_ms=1.6,
-            rtt_ms=3.2,
-            smt_proof_bytes=138,
-            pdr_pct=100.0
+            battery_pct=99.0,
+            signal_dbm=-48.0
         )
     ]
 
@@ -170,9 +149,8 @@ def get_swarm_topology():
         status="HEALTHY",
         active_nodes=4,
         cluster_count=1,
-        leader_id="Drone 1",
+        leader_id="Drone-1-Leader",
         topology_mode="4-UAV Post-Quantum Hierarchical Swarm",
-        total_swarm_throughput_kbps=799.6,  # 99.95 KB/s
         nodes=nodes
     )
 
@@ -180,7 +158,7 @@ def get_swarm_topology():
 @router.get("/smt/status", response_model=SMTStatusResponse)
 def get_smt_status():
     """Return Sparse Merkle Tree state, current Merkle Root, and proof data."""
-    root_hex = "0x" + (_smt_instance.root.hex() if (_smt_instance and hasattr(_smt_instance, "root") and _smt_instance.root) else "9a12b4f0c8a1e9bf4a746cbdaacd1fdb")
+    root_hex = "0x" + (_smt_instance.root.hex() if (_smt_instance and hasattr(_smt_instance, "root") and _smt_instance.root) else "a3f8b912c4d5e6f7a8b9c0d1e2f3a4b5")
     
     proof_sample = {
         "key": "drone-1",
@@ -217,7 +195,7 @@ def verify_smt_leaf(req: SMTLeafVerifyRequest):
         "key": req.key,
         "value": req.value,
         "verified": is_valid,
-        "merkle_root": "0x" + (_smt_instance.root.hex() if (_smt_instance and hasattr(_smt_instance, "root") and _smt_instance.root) else "9a12b4f0c8a1e9bf4a746cbdaacd1fdb"),
+        "merkle_root": "0x" + (_smt_instance.root.hex() if (_smt_instance and hasattr(_smt_instance, "root") and _smt_instance.root) else "a3f8b912c4d5e6f7a8b9c0d1e2f3a4b5"),
         "audit_result": "PASS: Cryptographic proof matches SMT root" if is_valid else "FAIL: Root hash mismatch"
     }
 
@@ -225,18 +203,55 @@ def verify_smt_leaf(req: SMTLeafVerifyRequest):
 @router.get("/swarm/d2d-performance", response_model=D2DPerformanceResponse)
 def get_d2d_performance():
     """Return performance evaluation metrics for 4-UAV Drone-to-Drone (D2D) communication with SMT."""
-    nodes = get_swarm_topology().nodes
+    routes = [
+        D2DRouteMetric(
+            source_uav="Drone-1-Leader",
+            target_uav="Windows-GCS",
+            hop_count=1,
+            d2d_latency_ms=2.10,
+            d2d_rtt_ms=4.20,
+            smt_verification_time_ms=0.18,
+            link_quality_pct=99.99
+        ),
+        D2DRouteMetric(
+            source_uav="Drone-2-Follower1",
+            target_uav="Drone-1-Leader",
+            hop_count=1,
+            d2d_latency_ms=1.40,
+            d2d_rtt_ms=2.80,
+            smt_verification_time_ms=0.12,
+            link_quality_pct=100.0
+        ),
+        D2DRouteMetric(
+            source_uav="Drone-3-Follower2",
+            target_uav="Drone-1-Leader",
+            hop_count=1,
+            d2d_latency_ms=1.50,
+            d2d_rtt_ms=3.00,
+            smt_verification_time_ms=0.14,
+            link_quality_pct=100.0
+        ),
+        D2DRouteMetric(
+            source_uav="Drone-4-DynamicJoin",
+            target_uav="Drone-1-Leader",
+            hop_count=1,
+            d2d_latency_ms=1.60,
+            d2d_rtt_ms=3.20,
+            smt_verification_time_ms=0.15,
+            link_quality_pct=100.0
+        )
+    ]
 
     return D2DPerformanceResponse(
         status="HEALTHY",
         d2d_avg_latency_ms=1.65,
         d2d_avg_rtt_ms=3.30,
-        d2d_throughput_kbps=799.6,  # 99.95 KB/s
+        d2d_throughput_mbps=0.80,  # ~799.6 kbps
         d2d_packet_loss_pct=0.01,
         smt_proof_gen_time_ms=0.18,
         smt_proof_verify_time_ms=0.12,
         smt_proof_size_bytes=138,
         root_sync_interval_ms=50.0,
         verification_success_rate_pct=99.99,
-        nodes=nodes
+        routes=routes
     )

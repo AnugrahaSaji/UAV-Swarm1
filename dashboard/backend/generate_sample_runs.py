@@ -20,9 +20,9 @@ suites_def = [
         "sig_nist": "Level 1",
         "aead": "ASCON-128",
         "sec_level": "Level 1",
-        "base_latency": 12.5,
-        "base_power": 3.15,
-        "base_tp": 22.4,
+        "base_latency": 9.8,
+        "base_power": 3.10,
+        "base_tp": 52.1,
     },
     {
         "suite_id": "ML-KEM-768_ML-DSA-65_AES-128-GCM",
@@ -34,9 +34,9 @@ suites_def = [
         "sig_nist": "Level 3",
         "aead": "AES-128-GCM",
         "sec_level": "Level 3",
-        "base_latency": 18.2,
-        "base_power": 3.65,
-        "base_tp": 19.8,
+        "base_latency": 14.2,
+        "base_power": 3.40,
+        "base_tp": 44.45,
     },
     {
         "suite_id": "ML-KEM-1024_ML-DSA-87_AES-256-GCM",
@@ -48,9 +48,9 @@ suites_def = [
         "sig_nist": "Level 5",
         "aead": "AES-256-GCM",
         "sec_level": "Level 5",
-        "base_latency": 25.7,
-        "base_power": 4.10,
-        "base_tp": 16.5,
+        "base_latency": 22.4,
+        "base_power": 3.80,
+        "base_tp": 38.2,
     },
     {
         "suite_id": "Frodo640-AES_Falcon512_ChaCha20-Poly1305",
@@ -62,10 +62,66 @@ suites_def = [
         "sig_nist": "Level 1",
         "aead": "ChaCha20-Poly1305",
         "sec_level": "Level 1",
-        "base_latency": 45.1,
-        "base_power": 5.20,
-        "base_tp": 12.1,
+        "base_latency": 11.5,
+        "base_power": 3.20,
+        "base_tp": 48.3,
     },
+    {
+        "suite_id": "Kyber512_Falcon512_AES-128-GCM",
+        "kem": "Kyber-512",
+        "kem_family": "Kyber",
+        "kem_nist": "Level 1",
+        "sig": "Falcon-512",
+        "sig_family": "Falcon",
+        "sig_nist": "Level 1",
+        "aead": "AES-128-GCM",
+        "sec_level": "Level 1",
+        "base_latency": 10.2,
+        "base_power": 3.15,
+        "base_tp": 50.4,
+    },
+    {
+        "suite_id": "Kyber768_Dilithium3_AES-256-GCM",
+        "kem": "Kyber-768",
+        "kem_family": "Kyber",
+        "kem_nist": "Level 3",
+        "sig": "Dilithium-3",
+        "sig_family": "Dilithium",
+        "sig_nist": "Level 3",
+        "aead": "AES-256-GCM",
+        "sec_level": "Level 3",
+        "base_latency": 15.6,
+        "base_power": 3.50,
+        "base_tp": 42.1,
+    },
+    {
+        "suite_id": "SphincsSHA2-128f_ML-KEM-512_ChaCha20",
+        "kem": "ML-KEM-512",
+        "kem_family": "ML-KEM",
+        "kem_nist": "Level 1",
+        "sig": "SPHINCS+-128f",
+        "sig_family": "SPHINCS+",
+        "sig_nist": "Level 1",
+        "aead": "ChaCha20-Poly1305",
+        "sec_level": "Level 1",
+        "base_latency": 28.5,
+        "base_power": 4.20,
+        "base_tp": 30.1,
+    },
+    {
+        "suite_id": "ClassicMcEliece-348864_ML-DSA-44_ASCON",
+        "kem": "McEliece-348864",
+        "kem_family": "Classic-McEliece",
+        "kem_nist": "Level 1",
+        "sig": "ML-DSA-44",
+        "sig_family": "ML-DSA",
+        "sig_nist": "Level 1",
+        "aead": "ASCON-128",
+        "sec_level": "Level 1",
+        "base_latency": 35.8,
+        "base_power": 4.80,
+        "base_tp": 24.6,
+    }
 ]
 
 run_timestamp = "20260801_190000"
@@ -89,7 +145,6 @@ for scenario in scenarios:
         tp = round(s["base_tp"] / mult, 2)
         loss = round(0.001 * mult, 4)
 
-
         drone_payload = {
             "run_context": {
                 "run_id": run_timestamp,
@@ -98,8 +153,8 @@ for scenario in scenarios:
                 "git_commit_hash": "a8f3b9c2",
                 "drone_hostname": "raspberrypi-uav1",
                 "gcs_hostname": "gcs-station-01",
-                "drone_ip": "192.168.1.101",
-                "gcs_ip": "192.168.1.100",
+                "drone_ip": "10.2.142.211",
+                "gcs_ip": "10.2.129.165",
                 "run_start_time_wall": "2026-08-01T19:00:00Z",
                 "run_end_time_wall": "2026-08-01T19:05:00Z",
                 "run_start_time_mono": 1000.0,
@@ -180,4 +235,4 @@ for scenario in scenarios:
         with gcs_file.open("w", encoding="utf-8") as f:
             json.dump(gcs_payload, f, indent=2)
 
-print("Successfully generated sample benchmark runs across all 3 scenario folders!")
+print("Successfully generated 8 PQC benchmark suites across all 3 scenario folders!")
