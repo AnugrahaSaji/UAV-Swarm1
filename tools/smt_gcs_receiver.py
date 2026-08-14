@@ -46,16 +46,26 @@ def main():
 
     try:
         while True:
-            msg = mav_conn.recv_match(blocking=True, timeout=2.0)
+            try:
+                msg = mav_conn.recv_msg()
+            except Exception:
+                continue
+
             if msg is None:
+                time.sleep(0.005)
                 continue
 
             total_received += 1
             msg_type = msg.get_type()
+            if msg_type == "BAD_DATA":
+                continue
+
             msg_counts[msg_type] = msg_counts.get(msg_type, 0) + 1
 
             if total_received % 10 == 1:
-                print(f"[{total_received:04d} MSGS] Type: {msg_type:18s} | SysID: {msg.get_srcSystem()} | CompID: {msg.get_srcComponent()} | Decrypted OK")
+                src_sys = getattr(msg, "sysid", getattr(msg, "_header", None).srcSystem if hasattr(msg, "_header") else 1)
+                src_comp = getattr(msg, "compid", getattr(msg, "_header", None).srcComponent if hasattr(msg, "_header") else 1)
+                print(f"[{total_received:04d} MSGS] Type: {msg_type:18s} | SysID: {src_sys} | CompID: {src_comp} | Decrypted OK")
 
     except KeyboardInterrupt:
         print(f"\nStopped GCS Receiver. Total Decrypted Messages Received: {total_received}")
