@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Hybrid Swarm Engine: Multi-Cluster Swarm Engine with Dynamic N-Drone Join, 
-Live SMT Attack Injection, Tamper Detection, Node Isolation & Live Performance Metrics (PQC + SMT + Hierarchy).
+Live SMT Attack Injection, Root Leader Compromise Detection, Dynamic Re-Election & Node Isolation (PQC + SMT + Hierarchy).
 """
 
 import argparse
@@ -33,7 +33,7 @@ except ImportError:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Hybrid Swarm Engine with Multi-Cluster SMT Attack Injection & Isolation")
+    parser = argparse.ArgumentParser(description="Hybrid Swarm Engine with Root Leader Compromise & Re-Election")
     parser.add_argument("--drones", type=int, default=5, help="Target total number of drones after dynamic joins (e.g. 5)")
     parser.add_argument("--device", default="/dev/ttyACM0", help="Physical Pixhawk serial port")
     parser.add_argument("--baud", type=int, default=115200, help="Serial baud rate")
@@ -44,13 +44,13 @@ def main():
     target_drones = max(3, args.drones)
 
     print("===================================================================")
-    print(f"      HYBRID SWARM ENGINE (PQC + SMT + HIERARCHY + INTRUSION ISOLATION)")
-    print("      • Drone 1 : PHYSICAL Pixhawk FC (/dev/ttyACM0) [Root Leader - Cluster 1]")
-    print("      • Drone 2 : SIMULATED Autonomous Drone      [Follower 1 - Cluster 1]")
-    print("      • Drone 3 : SIMULATED Autonomous Drone      [Follower 2 - Cluster 1]")
-    print("      • Drone 4 : DYNAMIC IN-FLIGHT JOIN          [Cluster Leader - Cluster 2]")
+    print(f"  HYBRID SWARM ENGINE (PQC + SMT + HIERARCHY + ROOT RE-ELECTION)")
+    print("  • Drone 1 : PHYSICAL Pixhawk FC (/dev/ttyACM0) [Root Leader - Cluster 1]")
+    print("  • Drone 2 : SIMULATED Autonomous Drone      [Follower 1 - Cluster 1]")
+    print("  • Drone 3 : SIMULATED Autonomous Drone      [Follower 2 - Cluster 1]")
+    print("  • Drone 4 : DYNAMIC IN-FLIGHT JOIN          [Cluster Leader - Cluster 2]")
     for i in range(5, target_drones + 1):
-        print(f"      • Drone {i} : DYNAMIC IN-FLIGHT JOIN          [Follower - Cluster 2]")
+        print(f"  • Drone {i} : DYNAMIC IN-FLIGHT JOIN          [Follower - Cluster 2]")
     print("===================================================================\n")
 
     if not HAS_DEPS:
@@ -76,6 +76,7 @@ def main():
     # Initial Cluster 1 Setup (Drone 1, Drone 2, Drone 3)
     active_drone_list = ["drone-1", "drone-2", "drone-3"]
     ejected_drones = set()
+    root_leader_id = "drone-1"
 
     topology.add_node(SwarmNode(drone_id="drone-1", role=SwarmRole.ROOT_LEADER, cluster_id=ClusterId("cluster-1")))
     topology.add_node(SwarmNode(drone_id="drone-2", role=SwarmRole.FOLLOWER, cluster_id=ClusterId("cluster-1"), parent_id="drone-1"))
@@ -89,6 +90,7 @@ def main():
 
     attack1_executed = False
     attack2_executed = False
+    attack3_executed = False
 
     try:
         while True:
@@ -99,15 +101,14 @@ def main():
             if epoch > 1 and epoch % 25 == 0 and next_join_drone <= target_drones:
                 node_id = f"drone-{next_join_drone}"
                 
-                # Multi-Cluster Assignment Rule: Drones >= 4 are assigned to Cluster 2
                 if next_join_drone == 4:
                     assigned_cluster = "cluster-2"
                     assigned_role = SwarmRole.CLUSTER_LEADER
-                    assigned_parent = "drone-1"
+                    assigned_parent = root_leader_id
                 else:
                     assigned_cluster = "cluster-2"
                     assigned_role = SwarmRole.FOLLOWER
-                    assigned_parent = "drone-4"
+                    assigned_parent = "drone-4" if "drone-4" in active_drone_list else root_leader_id
 
                 print(f"\n[DYNAMIC JOIN] Node '{node_id}' Requesting Swarm Admission to {assigned_cluster.upper()}...")
                 time.sleep(0.3)
@@ -183,7 +184,6 @@ def main():
                     print(f"  * ACTION: Triggering Automatic Mitigation & Isolation Protocol for '{target_drone}'...")
                     
                     t_iso_start = time.perf_counter()
-                    # Revocation & Isolation
                     EMPTY_HASH = b"\x00" * 32
                     tree.update(target_key, EMPTY_HASH)
                     topology.remove_node(target_drone)
@@ -220,16 +220,76 @@ def main():
                     print(f"  [ALERT] SMT Non-Membership Verification: [CONFIRMED ROGUE - NOT IN TREE] (Time: {t_nonmem_ms:.3f} ms)")
                     print(f"  * ACTION: Instant Connection Rejection & Port Drop for '{rogue_id}'. Zero network overhead consumed.\n")
 
+            # --- LIVE ATTACK INJECTION 3: ROOT LEADER (DRONE 1) COMPROMISE & DYNAMIC RE-ELECTION (Epoch 65) ---
+            if epoch == 65 and not attack3_executed and "drone-1" in active_drone_list and "drone-4" in active_drone_list:
+                attack3_executed = True
+                print("\n===================================================================")
+                print("[CRITICAL ATTACK] SCENARIO 3: ROOT LEADER ('drone-1') COMPROMISED BY ATTACKER!")
+                print("===================================================================")
+                print("[ALERT] Root Leader 'drone-1' serial telemetry corrupted / physical control compromised.")
+                print("  * Running SMT Root Integrity Verification...")
+
+                old_root_id = "drone-1"
+                old_root_key = hashlib.sha256(old_root_id.encode("utf-8")).digest()
+                authentic_proof = tree.create_proof(old_root_key)
+
+                # Tampered root leader state
+                tampered_root_state = {"id": old_root_id, "mode": "COMPROMISED", "status": "MALICIOUS"}
+                tampered_root_hash = hashlib.sha256(json.dumps(tampered_root_state, sort_keys=True).encode("utf-8")).digest()
+                malicious_root_proof = replace(authentic_proof, value_hash=tampered_root_hash)
+
+                if not SMTVerifier.verify_membership(tree.root, malicious_root_proof):
+                    print("  [ALERT] Root Leader Verification: [ROOT CORRUPTED / COMPROMISED]")
+                    print("  * DETECTED: Root Leader 'drone-1' has failed SMT cryptographic integrity check!")
+                    print("\n[EMERGENCY PROTOCOL] TRIGGERING DISTRIBUTED SWARM LEADER RE-ELECTION...")
+                    time.sleep(0.5)
+
+                    t_elect_start = time.perf_counter()
+
+                    # STEP 1: Revoke Node in SMT (Zero out leaf hash)
+                    EMPTY_HASH = b"\x00" * 32
+                    tree.update(old_root_key, EMPTY_HASH)
+                    
+                    # STEP 2: Elect Drone 4 as new ROOT_LEADER and update topology indexes safely
+                    new_root_id = "drone-4"
+                    root_leader_id = new_root_id
+
+                    # Clear child references from old root leader before removal to pass topology invariants
+                    if hasattr(topology, "_children") and old_root_id in topology._children:
+                        topology._children[old_root_id] = set()
+
+                    # Update Drone 4 role to ROOT_LEADER
+                    d4_node = topology.get_node(new_root_id)
+                    if d4_node:
+                        d4_node.role = SwarmRole.ROOT_LEADER
+                        d4_node.parent_id = None
+
+                    # Now remove compromised Drone 1 safely
+                    topology.remove_node(old_root_id)
+                    active_drone_list.remove(old_root_id)
+                    ejected_drones.add(old_root_id)
+
+                    t_elect_ms = (time.perf_counter() - t_elect_start) * 1000.0
+                    new_root_hash = tree.root
+
+                    print(f"\n[LEADER RE-ELECTION COMPLETED in {t_elect_ms:.3f} ms]")
+                    print(f"  1. Former Root Leader '{old_root_id}' STRIPPED of privileges & EJECTED.")
+                    print(f"  2. Candidate '{new_root_id}' ELECTED as NEW ROOT LEADER of Swarm!")
+                    print(f"  3. PQC Encrypted Control Tunnel transferred to '{new_root_id}'.")
+                    print(f"  4. Swarm Re-Rooted | New Global SMT Root: 0x{new_root_hash.hex()[:16]}...")
+                    print(f"  * RE-ELECTION METRICS: Election Latency: {t_elect_ms:.3f} ms | Unbroken Swarm Integrity\n")
+
             # --- DRONE 1: Physical Pixhawk Data ---
-            if has_physical:
+            if has_physical and "drone-1" not in ejected_drones:
                 raw_bytes = ser.read(4096)
                 if raw_bytes:
                     udp_sock.sendto(raw_bytes, (args.tx_host, args.tx_port))
 
-            d1_state = {"id": "drone-1", "cluster": "cluster-1", "mode": "PHYSICAL", "epoch": epoch, "status": "ACTIVE"}
-            d1_key = hashlib.sha256(b"drone-1").digest()
-            d1_val = hashlib.sha256(json.dumps(d1_state, sort_keys=True).encode("utf-8")).digest()
-            tree.update(d1_key, d1_val)
+            if "drone-1" not in ejected_drones:
+                d1_state = {"id": "drone-1", "cluster": "cluster-1", "mode": "PHYSICAL", "epoch": epoch, "status": "ACTIVE"}
+                d1_key = hashlib.sha256(b"drone-1").digest()
+                d1_val = hashlib.sha256(json.dumps(d1_state, sort_keys=True).encode("utf-8")).digest()
+                tree.update(d1_key, d1_val)
 
             # --- ACTIVE SWARM DRONES TELEMETRY UPDATE ---
             for n_id in active_drone_list:
@@ -264,7 +324,7 @@ def main():
             if epoch % 10 == 1:
                 active_count = len(active_drone_list)
                 cluster_count = 1 if active_count <= 3 and "drone-4" not in active_drone_list else 2
-                print(f"[SWARM Epoch #{epoch:05d}] Active Drones: {active_count} ({cluster_count} Clusters) | Global SMT Root: 0x{root_hash.hex()[:16]}... | {active_count}-Node Auth: {'[ALL ' + str(active_count) + ' AUTH PASSED]' if all_verified else '[FAILED]'}")
+                print(f"[SWARM Epoch #{epoch:05d}] Active Drones: {active_count} ({cluster_count} Clusters) | Root: {root_leader_id} | SMT Root: 0x{root_hash.hex()[:16]}... | {active_count}-Node Auth: {'[ALL ' + str(active_count) + ' AUTH PASSED]' if all_verified else '[FAILED]'}")
 
             time.sleep(0.05)
 
