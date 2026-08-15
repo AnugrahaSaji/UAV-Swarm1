@@ -44,7 +44,7 @@ def main():
     print("      • Drone 1 : PHYSICAL Pixhawk FC (/dev/ttyACM0) [Root Leader - Cluster 1]")
     print("      • Drone 2 : SIMULATED Autonomous Drone      [Follower 1 - Cluster 1]")
     print("      • Drone 3 : SIMULATED Autonomous Drone      [Follower 2 - Cluster 1]")
-    print("      • Drone 4 : DYNAMIC IN-FLIGHT JOIN          [Cluster Head - Cluster 2]")
+    print("      • Drone 4 : DYNAMIC IN-FLIGHT JOIN          [Cluster Leader - Cluster 2]")
     for i in range(5, target_drones + 1):
         print(f"      • Drone {i} : DYNAMIC IN-FLIGHT JOIN          [Follower - Cluster 2]")
     print("===================================================================\n")
@@ -93,7 +93,7 @@ def main():
                 # Multi-Cluster Assignment Rule: Drones >= 4 are assigned to Cluster 2
                 if next_join_drone == 4:
                     assigned_cluster = "cluster-2"
-                    assigned_role = SwarmRole.CLUSTER_HEAD
+                    assigned_role = SwarmRole.CLUSTER_LEADER
                     assigned_parent = "drone-1"
                 else:
                     assigned_cluster = "cluster-2"
