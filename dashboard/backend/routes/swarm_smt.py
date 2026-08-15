@@ -92,11 +92,10 @@ _smt_instance = None
 if SMT_AVAILABLE:
     try:
         _smt_instance = SparseMerkleTree()
-        # Seed with initial telemetry audit leaves using 32-byte hash keys and values
         _smt_instance.update(hash_key("drone-1"), hash_key("Physical_Pixhawk_FC_Telemetry_Valid"))
         _smt_instance.update(hash_key("drone-2"), hash_key("Follower_1_Telemetry_Valid"))
         _smt_instance.update(hash_key("drone-3"), hash_key("Follower_2_Telemetry_Valid"))
-        _smt_instance.update(hash_key("drone-4"), hash_key("Dynamic_Joined_Candidate_Valid"))
+        _smt_instance.update(hash_key("drone-4"), hash_key("Cluster2_Head_Telemetry_Valid"))
     except Exception as e:
         print(f"[Warning] Error initializing SMT tree instance: {e}")
 
@@ -105,7 +104,7 @@ if SMT_AVAILABLE:
 
 @router.get("/swarm/topology", response_model=SwarmStatusResponse)
 def get_swarm_topology():
-    """Return active 4-UAV hierarchical swarm cluster topology, roles, and status."""
+    """Return active 4-UAV Multi-Cluster hierarchical swarm topology."""
     nodes = [
         SwarmNodeInfo(
             node_id="Drone-1-Leader",
@@ -135,9 +134,9 @@ def get_swarm_topology():
             signal_dbm=-52.0
         ),
         SwarmNodeInfo(
-            node_id="Drone-4-DynamicJoin",
-            role="FOLLOWER",
-            cluster_id="cluster-1",
+            node_id="Drone-4-Cluster2Head",
+            role="CLUSTER_HEAD",
+            cluster_id="cluster-2",
             ip_address="10.2.142.214",
             status="ACTIVE",
             battery_pct=99.0,
@@ -148,9 +147,9 @@ def get_swarm_topology():
     return SwarmStatusResponse(
         status="HEALTHY",
         active_nodes=4,
-        cluster_count=1,
+        cluster_count=2,  # Multi-Cluster: cluster-1 and cluster-2
         leader_id="Drone-1-Leader",
-        topology_mode="4-UAV Post-Quantum Hierarchical Swarm",
+        topology_mode="4-UAV Multi-Cluster Post-Quantum Hierarchical Swarm",
         nodes=nodes
     )
 
@@ -161,8 +160,8 @@ def get_smt_status():
     root_hex = "0x" + (_smt_instance.root.hex() if (_smt_instance and hasattr(_smt_instance, "root") and _smt_instance.root) else "a3f8b912c4d5e6f7a8b9c0d1e2f3a4b5")
     
     proof_sample = {
-        "key": "drone-1",
-        "value": "Physical_Pixhawk_FC_Telemetry_Valid",
+        "key": "drone-4",
+        "value": "Cluster2_Head_Telemetry_Valid",
         "proof_siblings": ["0x9f1...", "0x8e2...", "0x7d3..."],
         "is_valid": True
     }
@@ -202,10 +201,10 @@ def verify_smt_leaf(req: SMTLeafVerifyRequest):
 
 @router.get("/swarm/d2d-performance", response_model=D2DPerformanceResponse)
 def get_d2d_performance():
-    """Return performance evaluation metrics for 4-UAV Drone-to-Drone (D2D) communication with SMT."""
+    """Return performance evaluation metrics for 4-UAV Multi-Cluster D2D communication with SMT."""
     routes = [
         D2DRouteMetric(
-            source_uav="Drone-1-Leader",
+            source_uav="Drone-1-Leader (Cluster-1)",
             target_uav="Windows-GCS",
             hop_count=1,
             d2d_latency_ms=2.10,
@@ -214,7 +213,7 @@ def get_d2d_performance():
             link_quality_pct=99.99
         ),
         D2DRouteMetric(
-            source_uav="Drone-2-Follower1",
+            source_uav="Drone-2-Follower1 (Cluster-1)",
             target_uav="Drone-1-Leader",
             hop_count=1,
             d2d_latency_ms=1.40,
@@ -223,7 +222,7 @@ def get_d2d_performance():
             link_quality_pct=100.0
         ),
         D2DRouteMetric(
-            source_uav="Drone-3-Follower2",
+            source_uav="Drone-3-Follower2 (Cluster-1)",
             target_uav="Drone-1-Leader",
             hop_count=1,
             d2d_latency_ms=1.50,
@@ -232,7 +231,7 @@ def get_d2d_performance():
             link_quality_pct=100.0
         ),
         D2DRouteMetric(
-            source_uav="Drone-4-DynamicJoin",
+            source_uav="Drone-4-Cluster2Head (Cluster-2)",
             target_uav="Drone-1-Leader",
             hop_count=1,
             d2d_latency_ms=1.60,
