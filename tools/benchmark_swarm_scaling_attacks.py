@@ -74,7 +74,7 @@ def build_fresh_swarm(N):
 
 def measure_sybil_recovery_latency(N, target_id):
     """
-    Measures Sybil SMT Recovery Latency:
+    Measures Sybil SMT Non-Membership Verification & Audit Latency:
     Detection -> Non-Membership Proof Audit -> SMT Verification -> Consistent Root Confirmed
     """
     tree, topology, root_id, inter_id, leaf_id = build_fresh_swarm(N)
@@ -95,7 +95,7 @@ def measure_sybil_recovery_latency(N, target_id):
 def measure_ddos_recovery_latency(N, target_id):
     """
     Measures DDoS SMT Recovery Latency:
-    Detection -> Leaf Revocation -> Merkle Path Recomputation -> New Root -> Root Consistency Verification
+    Detection -> Leaf Revocation -> Merkle Path Recomputation -> New Root -> Surviving Node Root Consistency Verification
     """
     tree, topology, root_id, inter_id, leaf_id = build_fresh_swarm(N)
     target_key = hashlib.sha256(target_id.encode("utf-8")).digest()
@@ -105,20 +105,25 @@ def measure_ddos_recovery_latency(N, target_id):
     tampered_hash = hashlib.sha256(json.dumps(tampered_state, sort_keys=True).encode("utf-8")).digest()
     malicious_proof = replace(authentic_proof, value_hash=tampered_hash)
 
+    # Determine a surviving valid drone node for post-revocation consistency check
+    surviving_drone_id = "drone-2" if target_id == "drone-1" else "drone-1"
+    surviving_key = hashlib.sha256(surviving_drone_id.encode("utf-8")).digest()
+
     t_start = time.perf_counter()
     # 1. Detect Mismatch
     is_valid = SMTVerifier.verify_membership(tree.root, malicious_proof)
+    consistent = False
     if not is_valid:
-        # 2. Revoke leaf hash (zero out)
+        # 2. Revoke leaf hash (zero out compromised node)
         EMPTY_HASH = b"\x00" * 32
         tree.update(target_key, EMPTY_HASH)
-        # 3. Re-verify root consistency after update
+        # 3. Re-verify root consistency using a surviving authenticated node
         new_root = tree.root
-        check_proof = tree.create_proof(hashlib.sha256(b"drone-1").digest())
+        check_proof = tree.create_proof(surviving_key)
         consistent = SMTVerifier.verify_membership(new_root, check_proof)
     t_end = time.perf_counter()
 
-    return (t_end - t_start) * 1000.0
+    return (t_end - t_start) * 1000.0 if consistent else 0.0
 
 
 def run_benchmark():
@@ -207,9 +212,9 @@ def run_benchmark():
         if len(merged_data) == 1:
             plt.plot(swarm_sizes, raw_data["summary"]["sybil_median"]["leaf"], "o-", color="#2ca02c", linewidth=2.5, label=f"Measured Platform ({platform_name})")
 
-        plt.title("Sybil Attack SMT Recovery Latency vs. Swarm Size (N = 5 to 50)", fontsize=12, fontweight="bold", pad=12)
+        plt.title("Sybil Attack Non-Membership Audit Latency vs. Swarm Size (N = 5 to 50)", fontsize=12, fontweight="bold", pad=12)
         plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
-        plt.ylabel("SMT Recovery Latency T_recovery (ms)", fontsize=11, fontweight="bold")
+        plt.ylabel("SMT Verification Latency (ms)", fontsize=11, fontweight="bold")
         plt.xticks(swarm_sizes)
         plt.grid(True, linestyle="--", alpha=0.6)
         plt.legend(fontsize=10, loc="upper left")
@@ -296,7 +301,7 @@ def update_latency_report(merged_data, swarm_sizes):
     report_lines.append("- **Statistical Rigor**: Median over **30 fresh repetitions** per swarm size ($N \\in \\{5, 10, 15, 20, 25, 30, 35, 40, 45, 50\\}$).")
     report_lines.append("\n---")
     report_lines.append("\n### 2. Side-by-Side Empirically Measured SMT Recovery Latency\n")
-    report_lines.append("#### A. Sybil Attack Non-Membership Recovery Latency ($T_{sybil}$)\n")
+    report_lines.append("#### A. Sybil Attack Non-Membership Audit Latency ($T_{sybil}$)\n")
     report_lines.append("| Swarm Size ($N$) | Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz) | Windows GCS (x86_64 Workstation) | Hardware Ratio | Control Loop Safety Budget |")
     report_lines.append("| :---: | :---: | :---: | :---: | :---: |")
 

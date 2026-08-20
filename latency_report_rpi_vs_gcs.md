@@ -14,25 +14,25 @@
 
 ### 2. Side-by-Side Empirically Measured SMT Recovery Latency
 
-#### A. Sybil Attack Non-Membership Recovery Latency ($T_{sybil}$)
+#### A. Sybil Attack Non-Membership Audit Latency ($T_{sybil}$)
 
 | Swarm Size ($N$) | Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz) | Windows GCS (x86_64 Workstation) | Hardware Ratio | Control Loop Safety Budget |
 | :---: | :---: | :---: | :---: | :---: |
-| **N = 5** | `Pending Run` | `1.1671 ms` | `N/A` | Real-Time (< 20 ms) |
-| **N = 15** | `Pending Run` | `0.8861 ms` | `N/A` | Real-Time (< 20 ms) |
-| **N = 25** | `Pending Run` | `0.8215 ms` | `N/A` | Real-Time (< 20 ms) |
-| **N = 35** | `Pending Run` | `0.7543 ms` | `N/A` | Real-Time (< 20 ms) |
-| **N = 50** | `Pending Run` | `0.7789 ms` | `N/A` | Real-Time (< 20 ms) |
+| **N = 5** | `Pending Run` | `1.1351 ms` | `N/A` | Real-Time (< 20 ms) |
+| **N = 15** | `Pending Run` | `1.1138 ms` | `N/A` | Real-Time (< 20 ms) |
+| **N = 25** | `Pending Run` | `1.0137 ms` | `N/A` | Real-Time (< 20 ms) |
+| **N = 35** | `Pending Run` | `0.7672 ms` | `N/A` | Real-Time (< 20 ms) |
+| **N = 50** | `Pending Run` | `0.7449 ms` | `N/A` | Real-Time (< 20 ms) |
 
 #### B. DDoS Flooding SMT Leaf Revocation & Recovery Latency ($T_{ddos}$)
 
 | Swarm Size ($N$) | Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz) | Windows GCS (x86_64 Workstation) | Hardware Ratio | Control Loop Safety Budget |
 | :---: | :---: | :---: | :---: | :---: |
-| **N = 5** | `Pending Run` | `4.6362 ms` | `N/A` | Real-Time (< 20 ms) |
-| **N = 15** | `Pending Run` | `4.0858 ms` | `N/A` | Real-Time (< 20 ms) |
-| **N = 25** | `Pending Run` | `3.7743 ms` | `N/A` | Real-Time (< 20 ms) |
-| **N = 35** | `Pending Run` | `3.3361 ms` | `N/A` | Real-Time (< 20 ms) |
-| **N = 50** | `Pending Run` | `3.7828 ms` | `N/A` | Real-Time (< 20 ms) |
+| **N = 5** | `Pending Run` | `4.4845 ms` | `N/A` | Real-Time (< 20 ms) |
+| **N = 15** | `Pending Run` | `4.2688 ms` | `N/A` | Real-Time (< 20 ms) |
+| **N = 25** | `Pending Run` | `3.6790 ms` | `N/A` | Real-Time (< 20 ms) |
+| **N = 35** | `Pending Run` | `3.3244 ms` | `N/A` | Real-Time (< 20 ms) |
+| **N = 50** | `Pending Run` | `2.4609 ms` | `N/A` | Real-Time (< 20 ms) |
 
 ---
 
