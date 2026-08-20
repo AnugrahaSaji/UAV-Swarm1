@@ -11,7 +11,12 @@ import os
 import sys
 import time
 from dataclasses import replace
-import matplotlib.pyplot as plt
+
+try:
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -77,7 +82,6 @@ def run_benchmark():
             rogue_key = hashlib.sha256(rogue_id.encode("utf-8")).digest()
             rogue_proof = tree.create_proof(rogue_key)
 
-            # Measure 500 iterations for sub-millisecond precision
             iterations = 500
             t_start = time.perf_counter()
             for _ in range(iterations):
@@ -98,7 +102,6 @@ def run_benchmark():
             iterations = 500
             t_start = time.perf_counter()
             for _ in range(iterations):
-                # Detect root mismatch & perform SMT zeroing revocation
                 is_valid = SMTVerifier.verify_membership(tree.root, malicious_proof)
                 if not is_valid:
                     tree.update(target_key, b"\x00" * 32)
@@ -116,81 +119,74 @@ def run_benchmark():
         json.dump(results, f, indent=2)
     print(f"\n[DATA] Benchmark JSON saved to: {json_path}")
 
-    # --- GENERATE MATPLOTLIB CHARTS ---
-    fig_dir = os.path.join(ROOT, "suite_benchmarks", "ieee_report_output", "figures")
-    os.makedirs(fig_dir, exist_ok=True)
+    # --- GENERATE MATPLOTLIB CHARTS IF INSTALLED ---
+    if HAS_MATPLOTLIB:
+        fig_dir = os.path.join(ROOT, "suite_benchmarks", "ieee_report_output", "figures")
+        os.makedirs(fig_dir, exist_ok=True)
 
-    plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
+        plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
 
-    # -------------------------------------------------------------
-    # CHART 1: Sybil Attack Latency vs Swarm Size (Root, Inter, Leaf)
-    # -------------------------------------------------------------
-    plt.figure(figsize=(9, 5), dpi=300)
-    plt.plot(swarm_sizes, results["sybil"]["root"], "o-", color="#1f77b4", linewidth=2.5, label="Root Node (Leader)")
-    plt.plot(swarm_sizes, results["sybil"]["intermediate"], "s--", color="#ff7f0e", linewidth=2.5, label="Intermediate Node (Cluster Head)")
-    plt.plot(swarm_sizes, results["sybil"]["leaf"], "^-.", color="#2ca02c", linewidth=2.5, label="Leaf Node (Follower)")
+        # CHART 1: Sybil Attack Latency vs Swarm Size
+        plt.figure(figsize=(9, 5), dpi=300)
+        plt.plot(swarm_sizes, results["sybil"]["root"], "o-", color="#1f77b4", linewidth=2.5, label="Root Node (Leader)")
+        plt.plot(swarm_sizes, results["sybil"]["intermediate"], "s--", color="#ff7f0e", linewidth=2.5, label="Intermediate Node (Cluster Head)")
+        plt.plot(swarm_sizes, results["sybil"]["leaf"], "^-.", color="#2ca02c", linewidth=2.5, label="Leaf Node (Follower)")
+        plt.title("Sybil Attack Non-Membership Detection Latency vs. Swarm Size (N = 5 to 50)", fontsize=12, fontweight="bold", pad=12)
+        plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
+        plt.ylabel("Detection Latency (ms)", fontsize=11, fontweight="bold")
+        plt.xticks(swarm_sizes)
+        plt.grid(True, linestyle="--", alpha=0.6)
+        plt.legend(fontsize=10, loc="upper left")
+        plt.tight_layout()
 
-    plt.title("Sybil Attack Non-Membership Detection Latency vs. Swarm Size (N = 5 to 50)", fontsize=12, fontweight="bold", pad=12)
-    plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
-    plt.ylabel("Detection Latency (ms)", fontsize=11, fontweight="bold")
-    plt.xticks(swarm_sizes)
-    plt.grid(True, linestyle="--", alpha=0.6)
-    plt.legend(fontsize=10, loc="upper left")
-    plt.tight_layout()
+        sybil_chart_path = os.path.join(fig_dir, "latency_vs_swarm_size_sybil.png")
+        plt.savefig(sybil_chart_path)
+        plt.close()
+        print(f"[CHART] Sybil Attack Chart saved to: {sybil_chart_path}")
 
-    sybil_chart_path = os.path.join(fig_dir, "latency_vs_swarm_size_sybil.png")
-    plt.savefig(sybil_chart_path)
-    plt.close()
-    print(f"[CHART] Sybil Attack Chart saved to: {sybil_chart_path}")
+        # CHART 2: DDoS Flooding Latency vs Swarm Size
+        plt.figure(figsize=(9, 5), dpi=300)
+        plt.plot(swarm_sizes, results["ddos"]["root"], "o-", color="#d62728", linewidth=2.5, label="Root Node (Leader)")
+        plt.plot(swarm_sizes, results["ddos"]["intermediate"], "s--", color="#9467bd", linewidth=2.5, label="Intermediate Node (Cluster Head)")
+        plt.plot(swarm_sizes, results["ddos"]["leaf"], "^-.", color="#8c564b", linewidth=2.5, label="Leaf Node (Follower)")
+        plt.title("DDoS Flooding Detection & Isolation Latency vs. Swarm Size (N = 5 to 50)", fontsize=12, fontweight="bold", pad=12)
+        plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
+        plt.ylabel("Detection & Isolation Latency (ms)", fontsize=11, fontweight="bold")
+        plt.xticks(swarm_sizes)
+        plt.grid(True, linestyle="--", alpha=0.6)
+        plt.legend(fontsize=10, loc="upper left")
+        plt.tight_layout()
 
-    # -------------------------------------------------------------
-    # CHART 2: DDoS Flooding Latency vs Swarm Size (Root, Inter, Leaf)
-    # -------------------------------------------------------------
-    plt.figure(figsize=(9, 5), dpi=300)
-    plt.plot(swarm_sizes, results["ddos"]["root"], "o-", color="#d62728", linewidth=2.5, label="Root Node (Leader)")
-    plt.plot(swarm_sizes, results["ddos"]["intermediate"], "s--", color="#9467bd", linewidth=2.5, label="Intermediate Node (Cluster Head)")
-    plt.plot(swarm_sizes, results["ddos"]["leaf"], "^-.", color="#8c564b", linewidth=2.5, label="Leaf Node (Follower)")
+        ddos_chart_path = os.path.join(fig_dir, "latency_vs_swarm_size_ddos.png")
+        plt.savefig(ddos_chart_path)
+        plt.close()
+        print(f"[CHART] DDoS Flooding Chart saved to: {ddos_chart_path}")
 
-    plt.title("DDoS Flooding Detection & Isolation Latency vs. Swarm Size (N = 5 to 50)", fontsize=12, fontweight="bold", pad=12)
-    plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
-    plt.ylabel("Detection & Isolation Latency (ms)", fontsize=11, fontweight="bold")
-    plt.xticks(swarm_sizes)
-    plt.grid(True, linestyle="--", alpha=0.6)
-    plt.legend(fontsize=10, loc="upper left")
-    plt.tight_layout()
+        # CHART 3: Combined Comparison Chart
+        plt.figure(figsize=(10, 6), dpi=300)
+        plt.plot(swarm_sizes, results["sybil"]["root"], "o-", color="#1f77b4", linewidth=2, label="Sybil — Root Node")
+        plt.plot(swarm_sizes, results["sybil"]["intermediate"], "s-", color="#ff7f0e", linewidth=2, label="Sybil — Intermediate Node")
+        plt.plot(swarm_sizes, results["sybil"]["leaf"], "^-", color="#2ca02c", linewidth=2, label="Sybil — Leaf Node")
+        plt.plot(swarm_sizes, results["ddos"]["root"], "o--", color="#d62728", linewidth=2, label="DDoS — Root Node")
+        plt.plot(swarm_sizes, results["ddos"]["intermediate"], "s--", color="#9467bd", linewidth=2, label="DDoS — Intermediate Node")
+        plt.plot(swarm_sizes, results["ddos"]["leaf"], "^--", color="#8c564b", linewidth=2, label="DDoS — Leaf Node")
+        plt.title("SMT Security Latency vs. Growing Swarm Size (N = 5 to 50) across Roles & Attacks", fontsize=12, fontweight="bold", pad=12)
+        plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
+        plt.ylabel("Latency (ms)", fontsize=11, fontweight="bold")
+        plt.xticks(swarm_sizes)
+        plt.grid(True, linestyle="--", alpha=0.6)
+        plt.legend(fontsize=9, loc="upper left", ncol=2)
+        plt.tight_layout()
 
-    ddos_chart_path = os.path.join(fig_dir, "latency_vs_swarm_size_ddos.png")
-    plt.savefig(ddos_chart_path)
-    plt.close()
-    print(f"[CHART] DDoS Flooding Chart saved to: {ddos_chart_path}")
-
-    # -------------------------------------------------------------
-    # CHART 3: Combined Comparison Chart (6 Curves)
-    # -------------------------------------------------------------
-    plt.figure(figsize=(10, 6), dpi=300)
-    plt.plot(swarm_sizes, results["sybil"]["root"], "o-", color="#1f77b4", linewidth=2, label="Sybil — Root Node")
-    plt.plot(swarm_sizes, results["sybil"]["intermediate"], "s-", color="#ff7f0e", linewidth=2, label="Sybil — Intermediate Node")
-    plt.plot(swarm_sizes, results["sybil"]["leaf"], "^-", color="#2ca02c", linewidth=2, label="Sybil — Leaf Node")
-
-    plt.plot(swarm_sizes, results["ddos"]["root"], "o--", color="#d62728", linewidth=2, label="DDoS — Root Node")
-    plt.plot(swarm_sizes, results["ddos"]["intermediate"], "s--", color="#9467bd", linewidth=2, label="DDoS — Intermediate Node")
-    plt.plot(swarm_sizes, results["ddos"]["leaf"], "^--", color="#8c564b", linewidth=2, label="DDoS — Leaf Node")
-
-    plt.title("SMT Security Latency vs. Growing Swarm Size (N = 5 to 50) across Roles & Attacks", fontsize=12, fontweight="bold", pad=12)
-    plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
-    plt.ylabel("Latency (ms)", fontsize=11, fontweight="bold")
-    plt.xticks(swarm_sizes)
-    plt.grid(True, linestyle="--", alpha=0.6)
-    plt.legend(fontsize=9, loc="upper left", ncol=2)
-    plt.tight_layout()
-
-    combined_chart_path = os.path.join(fig_dir, "latency_vs_swarm_size_combined.png")
-    plt.savefig(combined_chart_path)
-    plt.close()
-    print(f"[CHART] Combined Comparison Chart saved to: {combined_chart_path}")
+        combined_chart_path = os.path.join(fig_dir, "latency_vs_swarm_size_combined.png")
+        plt.savefig(combined_chart_path)
+        plt.close()
+        print(f"[CHART] Combined Comparison Chart saved to: {combined_chart_path}")
+    else:
+        print("\n[NOTE] Matplotlib not installed on this device. Data saved to JSON. Install matplotlib via 'pip install matplotlib' to render PNG charts.")
 
     print("\n===================================================================")
-    print("   BENCHMARK & CHART GENERATION COMPLETE SUCCESS!")
+    print("   BENCHMARK & DATA EXPORT COMPLETE SUCCESS!")
     print("===================================================================")
 
 
