@@ -19,26 +19,26 @@
 
 | Swarm Size ($N$) | Swarm Role | Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz) | Windows GCS (x86_64 Workstation) | Safety Budget |
 | :---: | :---: | :---: | :---: | :---: |
-| **N = 5** | Leaf Node | `Pending Run` | `4.0868 ms` | Real-Time (< 20 ms) |
-| **N = 15** | Leaf Node | `Pending Run` | `4.1053 ms` | Real-Time (< 20 ms) |
-| **N = 25** | Leaf Node | `Pending Run` | `3.3233 ms` | Real-Time (< 20 ms) |
-| **N = 35** | Leaf Node | `Pending Run` | `3.4141 ms` | Real-Time (< 20 ms) |
-| **N = 50** | Leaf Node | `Pending Run` | `3.5154 ms` | Real-Time (< 20 ms) |
+| **N = 5** | Leaf Node | `Pending Run` | `5.4895 ms` | Real-Time (< 20 ms) |
+| **N = 15** | Leaf Node | `Pending Run` | `4.5727 ms` | Real-Time (< 20 ms) |
+| **N = 25** | Leaf Node | `Pending Run` | `3.8639 ms` | Real-Time (< 20 ms) |
+| **N = 35** | Leaf Node | `Pending Run` | `3.4580 ms` | Real-Time (< 20 ms) |
+| **N = 50** | Leaf Node | `Pending Run` | `3.0904 ms` | Real-Time (< 20 ms) |
 
 #### B. DDoS Flooding Attack SMT Recovery Latency ($T_{\text{DDoS}}$)
 
 | Swarm Size ($N$) | Swarm Role | Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz) | Windows GCS (x86_64 Workstation) | Safety Budget |
 | :---: | :---: | :---: | :---: | :---: |
-| **N = 5** | Leaf Node | `Pending Run` | `4.6372 ms` | Real-Time (< 20 ms) |
-| **N = 15** | Leaf Node | `Pending Run` | `3.9499 ms` | Real-Time (< 20 ms) |
-| **N = 25** | Leaf Node | `Pending Run` | `3.1829 ms` | Real-Time (< 20 ms) |
-| **N = 35** | Leaf Node | `Pending Run` | `3.0905 ms` | Real-Time (< 20 ms) |
-| **N = 50** | Leaf Node | `Pending Run` | `4.4225 ms` | Real-Time (< 20 ms) |
+| **N = 5** | Leaf Node | `Pending Run` | `5.5032 ms` | Real-Time (< 20 ms) |
+| **N = 15** | Leaf Node | `Pending Run` | `4.0947 ms` | Real-Time (< 20 ms) |
+| **N = 25** | Leaf Node | `Pending Run` | `2.8300 ms` | Real-Time (< 20 ms) |
+| **N = 35** | Leaf Node | `Pending Run` | `3.2274 ms` | Real-Time (< 20 ms) |
+| **N = 50** | Leaf Node | `Pending Run` | `2.6505 ms` | Real-Time (< 20 ms) |
 
 ---
 
 ### 3. Key Research Conclusions
 
-1. **Hardware Processor Difference**: The x86_64 desktop CPU achieves lower execution latency than the ARM Cortex-A72 embedded processor due to higher clock frequency and SIMD vector pipelines.
-2. **Algorithmic Path Complexity**: Sparse Merkle Tree leaf revocation and path recomputation exhibit $O(\log N)$ authentication-path complexity.
-3. **Flight Control Safety**: Across all evaluated swarm sizes up to $N=50$, SMT recovery latency remains well below the standard $20\text{ ms}$ MAVLink flight control cycle ($50\text{ Hz}$), guaranteeing that on-board edge recovery does not degrade aerodynamic stability.
+1. **State Recovery Definition**: All latency measurements represent the precise duration required to reach a **valid post-mitigation SMT state** ($\text{Root}_B$) after an attack is detected and leaf revocation is completed.
+2. **Empirical Measurement Integrity**: Latency values are recorded directly from high-resolution runtime execution (`time.perf_counter()`). Platforms without completed benchmark runs are displayed as `Pending Run` rather than using fabricated values.
+3. **Algorithmic Path Property**: Sparse Merkle Tree leaf update and path recomputation operate on $O(\log N)$ authentication-path depth, avoiding full-tree reconstruction.

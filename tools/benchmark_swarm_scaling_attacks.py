@@ -423,9 +423,9 @@ def update_latency_report(datasets, swarm_sizes, mode_label):
 
     report_lines.append("\n---")
     report_lines.append("\n### 3. Key Research Conclusions\n")
-    report_lines.append("1. **Hardware Processor Difference**: The x86_64 desktop CPU achieves lower execution latency than the ARM Cortex-A72 embedded processor due to higher clock frequency and SIMD vector pipelines.")
-    report_lines.append("2. **Algorithmic Path Complexity**: Sparse Merkle Tree leaf revocation and path recomputation exhibit $O(\\log N)$ authentication-path complexity.")
-    report_lines.append("3. **Flight Control Safety**: Across all evaluated swarm sizes up to $N=50$, SMT recovery latency remains well below the standard $20\\text{ ms}$ MAVLink flight control cycle ($50\\text{ Hz}$), guaranteeing that on-board edge recovery does not degrade aerodynamic stability.")
+    report_lines.append("1. **State Recovery Definition**: All latency measurements represent the precise duration required to reach a **valid post-mitigation SMT state** ($\\text{Root}_B$) after an attack is detected and leaf revocation is completed.")
+    report_lines.append("2. **Empirical Measurement Integrity**: Latency values are recorded directly from high-resolution runtime execution (`time.perf_counter()`). Platforms without completed benchmark runs are displayed as `Pending Run` rather than using fabricated values.")
+    report_lines.append("3. **Algorithmic Path Property**: Sparse Merkle Tree leaf update and path recomputation operate on $O(\\log N)$ authentication-path depth, avoiding full-tree reconstruction.")
 
     report_content = "\n".join(report_lines)
 
