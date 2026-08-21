@@ -61,7 +61,7 @@ def load_telemetry_trace():
     if os.path.exists(trace_path):
         try:
             with open(trace_path, "r", encoding="utf-8") as f:
-                return json.load(f), "Recorded Real MAVLink Telemetry Trace Replay"
+                return json.load(f), "Controlled MAVLink Telemetry Trace Replay"
         except Exception:
             pass
 
@@ -81,7 +81,7 @@ def load_telemetry_trace():
             "seq_nonce": int(np.random.randint(1000, 9999)),
             "status": "ACTIVE"
         }
-    return trace_data, "Recorded Real MAVLink Telemetry Trace Replay"
+    return trace_data, "Controlled MAVLink Telemetry Trace Replay"
 
 
 def build_fresh_swarm_from_telemetry(N, telemetry_trace):
@@ -324,13 +324,13 @@ def run_benchmark():
             print(f"[CHART] {title} saved to: {out_path}")
 
         # GENERATE 6 INDIVIDUAL 300 DPI GRAPHS
-        plot_single_graph("sybil", "root", "GRAPH 1: Sybil Attack SMT Recovery Latency — Leader/Root", "graph1_sybil_leader.png")
-        plot_single_graph("sybil", "intermediate", "GRAPH 2: Sybil Attack SMT Recovery Latency — Intermediate/Cluster Head", "graph2_sybil_intermediate.png")
-        plot_single_graph("sybil", "leaf", "GRAPH 3: Sybil Attack SMT Recovery Latency — Leaf/Follower", "graph3_sybil_leaf.png")
+        plot_single_graph("sybil", "root", "GRAPH 1: Sybil Identity Rejection & SMT Recovery Latency — Leader/Root", "graph1_sybil_leader.png")
+        plot_single_graph("sybil", "intermediate", "GRAPH 2: Sybil Identity Rejection & SMT Recovery Latency — Intermediate/Cluster Head", "graph2_sybil_intermediate.png")
+        plot_single_graph("sybil", "leaf", "GRAPH 3: Sybil Identity Rejection & SMT Recovery Latency — Leaf/Follower", "graph3_sybil_leaf.png")
 
-        plot_single_graph("ddos", "root", "GRAPH 4: DDoS Flooding Attack SMT Recovery Latency — Leader/Root", "graph4_ddos_leader.png")
-        plot_single_graph("ddos", "intermediate", "GRAPH 5: DDoS Flooding Attack SMT Recovery Latency — Intermediate/Cluster Head", "graph5_ddos_intermediate.png")
-        plot_single_graph("ddos", "leaf", "GRAPH 6: DDoS Flooding Attack SMT Recovery Latency — Leaf/Follower", "graph6_ddos_leaf.png")
+        plot_single_graph("ddos", "root", "GRAPH 4: Malicious Telemetry Burst SMT Recovery Latency — Leader/Root", "graph4_ddos_leader.png")
+        plot_single_graph("ddos", "intermediate", "GRAPH 5: Malicious Telemetry Burst SMT Recovery Latency — Intermediate/Cluster Head", "graph5_ddos_intermediate.png")
+        plot_single_graph("ddos", "leaf", "GRAPH 6: Malicious Telemetry Burst SMT Recovery Latency — Leaf/Follower", "graph6_ddos_leaf.png")
 
         # GENERATE COMBINED 6-PANEL FIGURE AT 300 DPI
         fig, axes = plt.subplots(2, 3, figsize=(18, 10), dpi=300)

@@ -1,5 +1,5 @@
 # ONE-PAGE SMT RECOVERY LATENCY COMPARISON REPORT
-## Scientific Benchmark Evaluation (Recorded Real MAVLink Telemetry Trace Replay)
+## Scientific Benchmark Evaluation (Controlled MAVLink Telemetry Trace Replay)
 
 ---
 
@@ -19,21 +19,21 @@
 
 | Swarm Size ($N$) | Swarm Role | Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz) | Windows GCS (x86_64 Workstation) | Safety Budget |
 | :---: | :---: | :---: | :---: | :---: |
-| **N = 5** | Leaf Node | `Pending Run` | `5.4895 ms` | Real-Time (< 20 ms) |
-| **N = 15** | Leaf Node | `Pending Run` | `4.5727 ms` | Real-Time (< 20 ms) |
-| **N = 25** | Leaf Node | `Pending Run` | `3.8639 ms` | Real-Time (< 20 ms) |
-| **N = 35** | Leaf Node | `Pending Run` | `3.4580 ms` | Real-Time (< 20 ms) |
-| **N = 50** | Leaf Node | `Pending Run` | `3.0904 ms` | Real-Time (< 20 ms) |
+| **N = 5** | Leaf Node | `Pending Run` | `4.8752 ms` | Real-Time (< 20 ms) |
+| **N = 15** | Leaf Node | `Pending Run` | `4.4768 ms` | Real-Time (< 20 ms) |
+| **N = 25** | Leaf Node | `Pending Run` | `4.8530 ms` | Real-Time (< 20 ms) |
+| **N = 35** | Leaf Node | `Pending Run` | `3.3745 ms` | Real-Time (< 20 ms) |
+| **N = 50** | Leaf Node | `Pending Run` | `3.7291 ms` | Real-Time (< 20 ms) |
 
 #### B. DDoS Flooding Attack SMT Recovery Latency ($T_{\text{DDoS}}$)
 
 | Swarm Size ($N$) | Swarm Role | Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz) | Windows GCS (x86_64 Workstation) | Safety Budget |
 | :---: | :---: | :---: | :---: | :---: |
-| **N = 5** | Leaf Node | `Pending Run` | `5.5032 ms` | Real-Time (< 20 ms) |
-| **N = 15** | Leaf Node | `Pending Run` | `4.0947 ms` | Real-Time (< 20 ms) |
-| **N = 25** | Leaf Node | `Pending Run` | `2.8300 ms` | Real-Time (< 20 ms) |
-| **N = 35** | Leaf Node | `Pending Run` | `3.2274 ms` | Real-Time (< 20 ms) |
-| **N = 50** | Leaf Node | `Pending Run` | `2.6505 ms` | Real-Time (< 20 ms) |
+| **N = 5** | Leaf Node | `Pending Run` | `4.0612 ms` | Real-Time (< 20 ms) |
+| **N = 15** | Leaf Node | `Pending Run` | `4.3724 ms` | Real-Time (< 20 ms) |
+| **N = 25** | Leaf Node | `Pending Run` | `3.8175 ms` | Real-Time (< 20 ms) |
+| **N = 35** | Leaf Node | `Pending Run` | `3.1820 ms` | Real-Time (< 20 ms) |
+| **N = 50** | Leaf Node | `Pending Run` | `2.8402 ms` | Real-Time (< 20 ms) |
 
 ---
 
