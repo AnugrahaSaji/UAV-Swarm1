@@ -3,7 +3,7 @@
 Scientific SMT Recovery Latency Benchmark Engine (N = 5 to 50 Drones).
 Measures true SMT Recovery Latency (T_recovery = Attack Detection -> Leaf Revocation -> Path Recomputation -> Root Verification -> Consistent Valid State Restored)
 over 30 repetitions per configuration on Raspberry Pi 4 ARM Edge vs Windows GCS x86_64.
-Generates role-wise breakdown graphs for Leader (Root), Intermediate (Cluster Head), and Leaf (Follower) Drones.
+Generates role-wise breakdown graphs (Leader, Intermediate, Leaf) and cross-platform comparison graphs for BOTH Sybil and DDoS attacks.
 """
 
 import hashlib
@@ -205,9 +205,9 @@ def run_benchmark():
 
         # GRAPH 1: Sybil Attack Audit Latency by Swarm Role (Leader, Intermediate, Leaf)
         plt.figure(figsize=(9, 5), dpi=300)
-        plt.plot(swarm_sizes, raw_data["summary"]["sybil_median"]["root"], "o-", color="#1f77b4", linewidth=2.5, label="Root Drone (Leader)")
+        plt.plot(swarm_sizes, raw_data["summary"]["sybil_median"]["root"], "o-", color="#1f77b4", linewidth=2.5, label="Root Drone (Swarm Leader)")
         plt.plot(swarm_sizes, raw_data["summary"]["sybil_median"]["intermediate"], "s--", color="#ff7f0e", linewidth=2.5, label="Intermediate Drone (Cluster Head)")
-        plt.plot(swarm_sizes, raw_data["summary"]["sybil_median"]["leaf"], "^-.", color="#2ca02c", linewidth=2.5, label="Leaf Drone (Follower)")
+        plt.plot(swarm_sizes, raw_data["summary"]["sybil_median"]["leaf"], "^-.", color="#2ca02c", linewidth=2.5, label="Leaf Drone (Follower Node)")
 
         plt.title(f"Sybil Attack Audit Latency by Drone Role on {platform_name.upper()} (N = 5 to 50)", fontsize=12, fontweight="bold", pad=12)
         plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
@@ -224,9 +224,9 @@ def run_benchmark():
 
         # GRAPH 2: DDoS Flooding SMT Recovery Latency by Swarm Role (Leader, Intermediate, Leaf)
         plt.figure(figsize=(9, 5), dpi=300)
-        plt.plot(swarm_sizes, raw_data["summary"]["ddos_median"]["root"], "o-", color="#1f77b4", linewidth=2.5, label="Root Drone (Leader)")
+        plt.plot(swarm_sizes, raw_data["summary"]["ddos_median"]["root"], "o-", color="#1f77b4", linewidth=2.5, label="Root Drone (Swarm Leader)")
         plt.plot(swarm_sizes, raw_data["summary"]["ddos_median"]["intermediate"], "s--", color="#ff7f0e", linewidth=2.5, label="Intermediate Drone (Cluster Head)")
-        plt.plot(swarm_sizes, raw_data["summary"]["ddos_median"]["leaf"], "^-.", color="#2ca02c", linewidth=2.5, label="Leaf Drone (Follower)")
+        plt.plot(swarm_sizes, raw_data["summary"]["ddos_median"]["leaf"], "^-.", color="#2ca02c", linewidth=2.5, label="Leaf Drone (Follower Node)")
 
         plt.title(f"DDoS Flooding SMT Recovery Latency by Drone Role on {platform_name.upper()} (N = 5 to 50)", fontsize=12, fontweight="bold", pad=12)
         plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
@@ -241,25 +241,53 @@ def run_benchmark():
         plt.close()
         print(f"[CHART] DDoS Role Breakdown Chart saved to: {ddos_path}")
 
-        # GRAPH 3: Cross-Platform Platform Comparison (RPi4 vs GCS for Leaf Role)
+        # GRAPH 3: Cross-Platform Sybil Attack Audit Latency (Raspberry Pi 4 vs Windows GCS)
         plt.figure(figsize=(9, 5), dpi=300)
         if "rpi4_arm" in merged_data:
-            plt.plot(swarm_sizes, merged_data["rpi4_arm"]["ddos_median"]["leaf"], "o-", color="#d62728", linewidth=2.5, label="Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz)")
+            plt.plot(swarm_sizes, merged_data["rpi4_arm"]["sybil_median"]["root"], "o-", color="#d62728", linewidth=2.5, label="RPi 4 - Leader Drone (Root)")
+            plt.plot(swarm_sizes, merged_data["rpi4_arm"]["sybil_median"]["intermediate"], "s--", color="#e377c2", linewidth=2.5, label="RPi 4 - Intermediate Drone")
+            plt.plot(swarm_sizes, merged_data["rpi4_arm"]["sybil_median"]["leaf"], "^-.", color="#8c564b", linewidth=2.5, label="RPi 4 - Leaf Drone")
         if "windows_gcs_x86" in merged_data:
-            plt.plot(swarm_sizes, merged_data["windows_gcs_x86"]["ddos_median"]["leaf"], "s--", color="#1f77b4", linewidth=2.5, label="Windows GCS Workstation (x86_64 CPU)")
+            plt.plot(swarm_sizes, merged_data["windows_gcs_x86"]["sybil_median"]["root"], "o-", color="#1f77b4", linewidth=2.5, label="GCS - Leader Drone (Root)")
+            plt.plot(swarm_sizes, merged_data["windows_gcs_x86"]["sybil_median"]["intermediate"], "s--", color="#ff7f0e", linewidth=2.5, label="GCS - Intermediate Drone")
+            plt.plot(swarm_sizes, merged_data["windows_gcs_x86"]["sybil_median"]["leaf"], "^-.", color="#2ca02c", linewidth=2.5, label="GCS - Leaf Drone")
 
-        plt.title("Cross-Platform DDoS Recovery Latency: Raspberry Pi 4 vs. Windows GCS", fontsize=12, fontweight="bold", pad=12)
+        plt.title("Cross-Platform Sybil Attack Audit Latency by Drone Role: RPi 4 vs. Windows GCS", fontsize=11, fontweight="bold", pad=12)
+        plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
+        plt.ylabel("SMT Non-Membership Audit Latency (ms)", fontsize=11, fontweight="bold")
+        plt.xticks(swarm_sizes)
+        plt.grid(True, linestyle="--", alpha=0.6)
+        plt.legend(fontsize=9, loc="upper left")
+        plt.tight_layout()
+
+        sybil_cross_path = os.path.join(fig_dir, "latency_sybil_cross_platform.png")
+        plt.savefig(sybil_cross_path)
+        plt.close()
+        print(f"[CHART] Sybil Cross-Platform Chart saved to: {sybil_cross_path}")
+
+        # GRAPH 4: Cross-Platform DDoS Recovery Latency (Raspberry Pi 4 vs Windows GCS)
+        plt.figure(figsize=(9, 5), dpi=300)
+        if "rpi4_arm" in merged_data:
+            plt.plot(swarm_sizes, merged_data["rpi4_arm"]["ddos_median"]["root"], "o-", color="#d62728", linewidth=2.5, label="RPi 4 - Leader Drone (Root)")
+            plt.plot(swarm_sizes, merged_data["rpi4_arm"]["ddos_median"]["intermediate"], "s--", color="#e377c2", linewidth=2.5, label="RPi 4 - Intermediate Drone")
+            plt.plot(swarm_sizes, merged_data["rpi4_arm"]["ddos_median"]["leaf"], "^-.", color="#8c564b", linewidth=2.5, label="RPi 4 - Leaf Drone")
+        if "windows_gcs_x86" in merged_data:
+            plt.plot(swarm_sizes, merged_data["windows_gcs_x86"]["ddos_median"]["root"], "o-", color="#1f77b4", linewidth=2.5, label="GCS - Leader Drone (Root)")
+            plt.plot(swarm_sizes, merged_data["windows_gcs_x86"]["ddos_median"]["intermediate"], "s--", color="#ff7f0e", linewidth=2.5, label="GCS - Intermediate Drone")
+            plt.plot(swarm_sizes, merged_data["windows_gcs_x86"]["ddos_median"]["leaf"], "^-.", color="#2ca02c", linewidth=2.5, label="GCS - Leaf Drone")
+
+        plt.title("Cross-Platform DDoS Recovery Latency by Drone Role: RPi 4 vs. Windows GCS", fontsize=11, fontweight="bold", pad=12)
         plt.xlabel("Swarm Size (Number of Drones N)", fontsize=11, fontweight="bold")
         plt.ylabel("SMT Recovery Latency T_recovery (ms)", fontsize=11, fontweight="bold")
         plt.xticks(swarm_sizes)
         plt.grid(True, linestyle="--", alpha=0.6)
-        plt.legend(fontsize=10, loc="upper left")
+        plt.legend(fontsize=9, loc="upper left")
         plt.tight_layout()
 
-        role_path = os.path.join(fig_dir, "latency_recovery_roles_breakdown.png")
-        plt.savefig(role_path)
+        ddos_cross_path = os.path.join(fig_dir, "latency_ddos_cross_platform.png")
+        plt.savefig(ddos_cross_path)
         plt.close()
-        print(f"[CHART] Cross-Platform Comparison Chart saved to: {role_path}")
+        print(f"[CHART] DDoS Cross-Platform Chart saved to: {ddos_cross_path}")
 
     # --- UPDATE LATENCY REPORT MARKDOWN ---
     update_latency_report(merged_data, swarm_sizes)

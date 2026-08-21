@@ -9,31 +9,31 @@
 
 | Swarm Size ($N$) | Leader Drone (Root) | Intermediate Drone (Cluster Head) | Leaf Drone (Follower) | Safety Budget |
 | :---: | :---: | :---: | :---: | :---: |
-| **N = 5** | `0.9933 ms` | `1.0442 ms` | `1.0720 ms` | Real-Time (< 20 ms) |
-| **N = 10** | `1.0488 ms` | `1.0207 ms` | `0.7916 ms` | Real-Time (< 20 ms) |
-| **N = 15** | `1.0217 ms` | `1.0264 ms` | `0.9747 ms` | Real-Time (< 20 ms) |
-| **N = 20** | `0.9990 ms` | `0.8689 ms` | `0.9965 ms` | Real-Time (< 20 ms) |
-| **N = 25** | `1.0031 ms` | `0.8855 ms` | `0.7209 ms` | Real-Time (< 20 ms) |
-| **N = 30** | `1.0219 ms` | `0.8672 ms` | `0.9132 ms` | Real-Time (< 20 ms) |
-| **N = 35** | `0.8842 ms` | `0.8948 ms` | `0.7798 ms` | Real-Time (< 20 ms) |
-| **N = 40** | `0.9126 ms` | `0.9049 ms` | `0.7550 ms` | Real-Time (< 20 ms) |
-| **N = 45** | `0.7514 ms` | `0.7713 ms` | `0.7233 ms` | Real-Time (< 20 ms) |
-| **N = 50** | `0.7142 ms` | `0.6986 ms` | `0.7654 ms` | Real-Time (< 20 ms) |
+| **N = 5** | `1.0672 ms` | `1.1387 ms` | `1.0286 ms` | Real-Time (< 20 ms) |
+| **N = 10** | `0.9852 ms` | `1.0097 ms` | `0.8258 ms` | Real-Time (< 20 ms) |
+| **N = 15** | `0.9936 ms` | `0.9874 ms` | `0.9694 ms` | Real-Time (< 20 ms) |
+| **N = 20** | `0.9027 ms` | `0.9898 ms` | `0.8299 ms` | Real-Time (< 20 ms) |
+| **N = 25** | `0.7509 ms` | `0.9642 ms` | `1.1604 ms` | Real-Time (< 20 ms) |
+| **N = 30** | `0.9196 ms` | `1.0288 ms` | `0.7475 ms` | Real-Time (< 20 ms) |
+| **N = 35** | `0.9326 ms` | `0.7504 ms` | `0.8096 ms` | Real-Time (< 20 ms) |
+| **N = 40** | `0.6976 ms` | `0.7684 ms` | `0.7537 ms` | Real-Time (< 20 ms) |
+| **N = 45** | `0.7299 ms` | `0.7750 ms` | `0.9275 ms` | Real-Time (< 20 ms) |
+| **N = 50** | `0.7356 ms` | `0.7077 ms` | `0.7151 ms` | Real-Time (< 20 ms) |
 
 #### B. DDoS Flooding SMT Recovery Latency ($T_{\text{DDoS}}$)
 
 | Swarm Size ($N$) | Leader Drone (Root) | Intermediate Drone (Cluster Head) | Leaf Drone (Follower) | Safety Budget |
 | :---: | :---: | :---: | :---: | :---: |
-| **N = 5** | `4.1095 ms` | `4.1717 ms` | `4.2250 ms` | Real-Time (< 20 ms) |
-| **N = 10** | `4.3366 ms` | `4.1229 ms` | `4.2834 ms` | Real-Time (< 20 ms) |
-| **N = 15** | `4.0733 ms` | `4.1295 ms` | `3.9518 ms` | Real-Time (< 20 ms) |
-| **N = 20** | `2.6235 ms` | `4.1301 ms` | `3.8383 ms` | Real-Time (< 20 ms) |
-| **N = 25** | `2.6606 ms` | `2.9504 ms` | `3.4601 ms` | Real-Time (< 20 ms) |
-| **N = 30** | `4.5982 ms` | `3.6176 ms` | `3.6009 ms` | Real-Time (< 20 ms) |
-| **N = 35** | `2.9551 ms` | `3.0606 ms` | `2.6304 ms` | Real-Time (< 20 ms) |
-| **N = 40** | `3.3355 ms` | `2.8759 ms` | `3.5569 ms` | Real-Time (< 20 ms) |
-| **N = 45** | `2.8149 ms` | `2.7800 ms` | `2.8273 ms` | Real-Time (< 20 ms) |
-| **N = 50** | `2.8620 ms` | `2.9389 ms` | `2.5762 ms` | Real-Time (< 20 ms) |
+| **N = 5** | `4.0638 ms` | `4.1491 ms` | `4.0358 ms` | Real-Time (< 20 ms) |
+| **N = 10** | `4.1236 ms` | `3.9373 ms` | `4.0252 ms` | Real-Time (< 20 ms) |
+| **N = 15** | `3.3639 ms` | `4.1142 ms` | `4.0555 ms` | Real-Time (< 20 ms) |
+| **N = 20** | `3.6830 ms` | `3.7899 ms` | `3.7044 ms` | Real-Time (< 20 ms) |
+| **N = 25** | `4.1773 ms` | `4.3554 ms` | `4.4235 ms` | Real-Time (< 20 ms) |
+| **N = 30** | `4.4930 ms` | `4.1196 ms` | `3.1826 ms` | Real-Time (< 20 ms) |
+| **N = 35** | `2.9306 ms` | `3.4074 ms` | `3.5608 ms` | Real-Time (< 20 ms) |
+| **N = 40** | `2.7655 ms` | `3.8992 ms` | `2.7347 ms` | Real-Time (< 20 ms) |
+| **N = 45** | `2.6640 ms` | `2.7365 ms` | `3.2503 ms` | Real-Time (< 20 ms) |
+| **N = 50** | `3.0643 ms` | `2.7902 ms` | `2.9176 ms` | Real-Time (< 20 ms) |
 
 ---
 
