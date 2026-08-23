@@ -85,30 +85,41 @@ def load_telemetry_trace():
 
 
 def build_fresh_swarm_from_telemetry(N, telemetry_trace):
-    """Constructs a fresh Sparse Merkle Tree & Topology from real/replayed telemetry."""
+    """Constructs a fresh Sparse Merkle Tree & Multi-Cluster Topology from real/replayed telemetry."""
     tree = SparseMerkleTree()
     topology = SwarmTopology()
 
+    cluster_size = 10
+    num_clusters = math.ceil(N / cluster_size)
+
     root_id = "drone-1"
-    inter_id = f"drone-{max(2, N // 2)}"
+    inter_id = "drone-11" if N >= 11 else ("drone-2" if N >= 2 else "drone-1")
     leaf_id = f"drone-{N}"
 
-    topology.add_node(SwarmNode(drone_id=root_id, role=SwarmRole.ROOT_LEADER, cluster_id=ClusterId("cluster-1")))
+    # Cluster assignment & topology setup
+    for c in range(num_clusters):
+        cid = f"cluster-{c + 1}"
+        start_idx = c * cluster_size + 1
+        end_idx = min((c + 1) * cluster_size, N)
 
-    for i in range(1, N + 1):
-        drone_id = f"drone-{i}"
-        state = telemetry_trace.get(drone_id, {
-            "id": drone_id, "roll": 0.0, "pitch": 0.0, "vbat": 12600, "status": "ACTIVE"
-        })
-        key = hashlib.sha256(drone_id.encode("utf-8")).digest()
-        val_hash = hashlib.sha256(json.dumps(state, sort_keys=True).encode("utf-8")).digest()
-        tree.update(key, val_hash)
+        # Leader of cluster
+        leader_id = f"drone-{start_idx}"
+        if c == 0:
+            topology.add_node(SwarmNode(drone_id=leader_id, role=SwarmRole.ROOT_LEADER, cluster_id=ClusterId(cid)))
+        else:
+            topology.add_node(SwarmNode(drone_id=leader_id, role=SwarmRole.CLUSTER_LEADER, cluster_id=ClusterId(cid), parent_id=root_id))
 
-        if i > 1:
-            role = SwarmRole.CLUSTER_LEADER if drone_id == inter_id else SwarmRole.FOLLOWER
-            cluster = "cluster-2" if i > N // 2 else "cluster-1"
-            parent = root_id if cluster == "cluster-1" else inter_id
-            topology.add_node(SwarmNode(drone_id=drone_id, role=role, cluster_id=ClusterId(cluster), parent_id=parent))
+        for i in range(start_idx, end_idx + 1):
+            drone_id = f"drone-{i}"
+            state = telemetry_trace.get(drone_id, {
+                "id": drone_id, "roll": 0.0, "pitch": 0.0, "vbat": 12600, "status": "ACTIVE"
+            })
+            key = hashlib.sha256(drone_id.encode("utf-8")).digest()
+            val_hash = hashlib.sha256(json.dumps(state, sort_keys=True).encode("utf-8")).digest()
+            tree.update(key, val_hash)
+
+            if drone_id != leader_id:
+                topology.add_node(SwarmNode(drone_id=drone_id, role=SwarmRole.FOLLOWER, cluster_id=ClusterId(cid), parent_id=leader_id))
 
     return tree, topology, root_id, inter_id, leaf_id
 
@@ -116,7 +127,7 @@ def build_fresh_swarm_from_telemetry(N, telemetry_trace):
 def measure_sybil_recovery_latency(N, target_id, telemetry_trace):
     """
     Measures Sybil SMT Recovery Latency:
-    Sybil event -> Detection -> Rejection/Revocation -> SMT State Update -> Path Recomputation -> New Root -> Verification Completed.
+    Sybil event -> Detection -> Rejection/Revocation -> Re-parenting (if needed) -> SMT State Update -> Path Recomputation -> New Root -> Verification Completed.
     Timer EXCLUDES initial tree setup, graph generation, and network RTT.
     """
     tree, topology, root_id, inter_id, leaf_id = build_fresh_swarm_from_telemetry(N, telemetry_trace)
@@ -137,6 +148,14 @@ def measure_sybil_recovery_latency(N, target_id, telemetry_trace):
         # 2. Sybil Rejection & Blacklist State Update
         EMPTY_HASH = b"\x00" * 32
         tree.update(rogue_key, EMPTY_HASH)
+
+        # Handle leaf zeroing for target node
+        if target_id in (root_id, inter_id):
+            target_key = hashlib.sha256(target_id.encode("utf-8")).digest()
+            tree.update(target_key, EMPTY_HASH)
+        if topology.contains(target_id) and not topology.get_children(target_id):
+            topology.remove_node(target_id)
+
         # 3. Path Recomputation & Surviving Root Verification
         new_root = tree.root
         check_proof = tree.create_proof(surviving_key)
@@ -179,6 +198,10 @@ def measure_ddos_recovery_latency(N, target_id, telemetry_trace):
         # 2. Revoke compromised leaf (Zero Out Hash)
         EMPTY_HASH = b"\x00" * 32
         tree.update(target_key, EMPTY_HASH)
+
+        if topology.contains(target_id) and not topology.get_children(target_id):
+            topology.remove_node(target_id)
+
         # 3. Path Recomputation & Surviving Root Verification
         new_root = tree.root
         check_proof = tree.create_proof(surviving_key)
