@@ -19,21 +19,21 @@
 
 | Swarm Size ($N$) | Swarm Role | Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz) | Windows GCS (x86_64 Workstation) | Safety Budget |
 | :---: | :---: | :---: | :---: | :---: |
-| **N = 5** | Leaf Node | `Pending Run` | `2.1261 ms` | Real-Time (< 20 ms) |
-| **N = 15** | Leaf Node | `Pending Run` | `2.0149 ms` | Real-Time (< 20 ms) |
-| **N = 25** | Leaf Node | `Pending Run` | `1.9688 ms` | Real-Time (< 20 ms) |
-| **N = 35** | Leaf Node | `Pending Run` | `2.4275 ms` | Real-Time (< 20 ms) |
-| **N = 50** | Leaf Node | `Pending Run` | `2.1338 ms` | Real-Time (< 20 ms) |
+| **N = 5** | Leaf Node | `Pending Run` | `6.5526 ms` | Real-Time (< 20 ms) |
+| **N = 15** | Leaf Node | `Pending Run` | `5.8360 ms` | Real-Time (< 20 ms) |
+| **N = 25** | Leaf Node | `Pending Run` | `3.1110 ms` | Real-Time (< 20 ms) |
+| **N = 35** | Leaf Node | `Pending Run` | `3.7771 ms` | Real-Time (< 20 ms) |
+| **N = 50** | Leaf Node | `Pending Run` | `3.5171 ms` | Real-Time (< 20 ms) |
 
 #### B. DDoS Flooding Attack SMT Recovery Latency ($T_{\text{DDoS}}$)
 
 | Swarm Size ($N$) | Swarm Role | Raspberry Pi 4 (ARM Cortex-A72 @ 1.5 GHz) | Windows GCS (x86_64 Workstation) | Safety Budget |
 | :---: | :---: | :---: | :---: | :---: |
-| **N = 5** | Leaf Node | `Pending Run` | `2.2123 ms` | Real-Time (< 20 ms) |
-| **N = 15** | Leaf Node | `Pending Run` | `2.0682 ms` | Real-Time (< 20 ms) |
-| **N = 25** | Leaf Node | `Pending Run` | `2.0144 ms` | Real-Time (< 20 ms) |
-| **N = 35** | Leaf Node | `Pending Run` | `2.7406 ms` | Real-Time (< 20 ms) |
-| **N = 50** | Leaf Node | `Pending Run` | `2.1743 ms` | Real-Time (< 20 ms) |
+| **N = 5** | Leaf Node | `Pending Run` | `6.4147 ms` | Real-Time (< 20 ms) |
+| **N = 15** | Leaf Node | `Pending Run` | `4.2428 ms` | Real-Time (< 20 ms) |
+| **N = 25** | Leaf Node | `Pending Run` | `3.5073 ms` | Real-Time (< 20 ms) |
+| **N = 35** | Leaf Node | `Pending Run` | `3.8086 ms` | Real-Time (< 20 ms) |
+| **N = 50** | Leaf Node | `Pending Run` | `3.1873 ms` | Real-Time (< 20 ms) |
 
 ---
 
