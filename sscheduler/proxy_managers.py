@@ -37,15 +37,22 @@ class DroneProxyManager:
             return False
         resolved_aead = normalize_aead_token(aead_token) if aead_token else str(suite.get("aead_token", "aesgcm"))
 
-        peer_pubkey = SECRETS_DIR / suite_name / "gcs_signing.pub"
-        if not peer_pubkey.exists():
-            peer_pubkey = SECRETS_DIR / "gcs_signing.pub"
-        if not peer_pubkey.exists():
-            peer_pubkey = ROOT / "secrets" / suite_name / "gcs_signing.pub"
-        if not peer_pubkey.exists():
-            peer_pubkey = ROOT / "secrets" / "gcs_signing.pub"
-        if not peer_pubkey.exists():
-            log(f"Missing public key: {peer_pubkey}")
+        candidate_keys = [
+            SECRETS_DIR / suite_name / "gcs_signing.pub",
+            SECRETS_DIR / "gcs_signing.pub",
+            ROOT / "secrets" / "drone_matrix" / "gcs_signing.pub",
+            ROOT / "secrets" / "matrix" / "gcs_signing.pub",
+            ROOT / "secrets" / suite_name / "gcs_signing.pub",
+            ROOT / "secrets" / "gcs_signing.pub",
+            ROOT / "secrets" / "drone_signing.pub",
+        ]
+        peer_pubkey = None
+        for cand in candidate_keys:
+            if cand.exists():
+                peer_pubkey = cand
+                break
+        if not peer_pubkey:
+            log(f"Missing public key: {candidate_keys[0]}")
             return False
 
         cmd = [
@@ -131,15 +138,21 @@ class GcsProxyManager:
         resolved_aead = normalize_aead_token(aead_token) if aead_token else str(suite.get("aead_token", "aesgcm"))
 
         secret_dir = SECRETS_DIR / suite_name
-        gcs_key = secret_dir / "gcs_signing.key"
-        if not gcs_key.exists():
-            gcs_key = SECRETS_DIR / "gcs_signing.key"
-        if not gcs_key.exists():
-            gcs_key = ROOT / "secrets" / suite_name / "gcs_signing.key"
-        if not gcs_key.exists():
-            gcs_key = ROOT / "secrets" / "gcs_signing.key"
-        if not gcs_key.exists():
-            log(f"Missing signing key: {gcs_key}")
+        candidate_keys = [
+            secret_dir / "gcs_signing.key",
+            SECRETS_DIR / "gcs_signing.key",
+            ROOT / "secrets" / "matrix" / "gcs_signing.key",
+            ROOT / "secrets" / "drone_matrix" / "gcs_signing.key",
+            ROOT / "secrets" / suite_name / "gcs_signing.key",
+            ROOT / "secrets" / "gcs_signing.key",
+        ]
+        gcs_key = None
+        for cand in candidate_keys:
+            if cand.exists():
+                gcs_key = cand
+                break
+        if not gcs_key:
+            log(f"Missing signing key: {candidate_keys[0]}")
             return False
 
         cmd = [
