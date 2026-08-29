@@ -18,7 +18,20 @@ import time
 import logging
 import threading
 from pathlib import Path
-from typing import Callable, Dict, Optional
+
+# Dynamically add liboqs-python path if present
+_home = Path.home()
+_candidates = [
+    os.getenv("LIBOQS_PYTHON_DIR"),
+    _home / "liboqs-python",
+    _home / "quantum-safe" / "liboqs-python",
+    _home / "UAV-Swarm1" / "liboqs-python",
+    Path("/home/swarmmain/liboqs-python"),
+    Path("/home/dev/quantum-safe/liboqs-python"),
+]
+for _cand in _candidates:
+    if _cand and Path(_cand).is_dir() and str(_cand) not in sys.path:
+        sys.path.insert(0, str(_cand))
 
 from core.config import CONFIG, ConfigError, validate_config
 from core.suites import (
