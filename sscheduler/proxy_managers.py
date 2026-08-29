@@ -41,6 +41,10 @@ class DroneProxyManager:
         if not peer_pubkey.exists():
             peer_pubkey = SECRETS_DIR / "gcs_signing.pub"
         if not peer_pubkey.exists():
+            peer_pubkey = ROOT / "secrets" / suite_name / "gcs_signing.pub"
+        if not peer_pubkey.exists():
+            peer_pubkey = ROOT / "secrets" / "gcs_signing.pub"
+        if not peer_pubkey.exists():
             log(f"Missing public key: {peer_pubkey}")
             return False
 
@@ -130,6 +134,10 @@ class GcsProxyManager:
         gcs_key = secret_dir / "gcs_signing.key"
         if not gcs_key.exists():
             gcs_key = SECRETS_DIR / "gcs_signing.key"
+        if not gcs_key.exists():
+            gcs_key = ROOT / "secrets" / suite_name / "gcs_signing.key"
+        if not gcs_key.exists():
+            gcs_key = ROOT / "secrets" / "gcs_signing.key"
         if not gcs_key.exists():
             log(f"Missing signing key: {gcs_key}")
             return False
