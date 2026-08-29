@@ -254,6 +254,13 @@ def _require_signature_class():
     """Lazily import oqs Signature and provide a friendly error if missing."""
 
     try:
+        from core.handshake import Signature as HandshakeSig
+        if HandshakeSig is not None:
+            return HandshakeSig
+    except Exception:
+        pass
+
+    try:
         from oqs.oqs import Signature  # type: ignore
         if Signature is not None:
             return Signature
