@@ -145,6 +145,13 @@ flowchart LR
 │   ├── follower.py             # Follower Drone Node Handler
 │   ├── task_manager.py         # Dynamic Task Assigner & Failover Manager
 │   └── routing.py              # O(1) Microsecond Route Lookup Engine
+├── sitl/                       # Software-In-The-Loop (SITL) Validation & Trust Subsystem
+│   ├── sitl_flight_engine.py   # Native ArduPilot/PX4 SITL & MAVLink Telemetry Generator
+│   ├── sitl_security_bridge.py # PQC Handshake (ML-KEM-768/ML-DSA-65) + SMT + Ascon AEAD Bridge
+│   ├── sitl_attack_simulator.py# Telemetry Tampering, Sybil, and Volumetric DDoS Attack Simulator
+│   ├── trust_engine.py         # Multi-Dimensional Dynamic UAV Trust Scoring Engine
+│   ├── sitl_e2e_benchmark.py   # Scalable SITL Benchmark Suite (5 to 50 UAV Sweep)
+│   └── run_sitl_validation.py  # Master Execution Runner & Report Generator
 ├── sscheduler/                 # Energy-Aware CPU & Task Scheduler
 │   ├── governor.py             # Linux cpufreq / DVFS policy controller
 │   └── detector_manager.py     # Adaptive DDoS Classifier Duty-Cycler
@@ -193,6 +200,15 @@ python tools/swarm_3drone_simulator.py
 
 # Start Ground Control Station (GCS) telemetry bridge
 python tools/gcs_mavlink_forwarder.py
+```
+
+### 5. Execute Native SITL Validation & Multi-Dimensional Trust Benchmark
+```bash
+# 1. Test 5-drone native SITL connection and security bridge
+python sitl/run_sitl_validation.py --mode sitl --drones 5
+
+# 2. Execute native SITL scalable sweep from 5 to 50 drones
+python sitl/run_sitl_validation.py --mode sitl --sweep --max-drones 50
 ```
 
 ---

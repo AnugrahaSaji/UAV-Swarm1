@@ -644,3 +644,44 @@ class Receiver:
         self._cipher = None
         self._high = -1
         self._mask = 0
+
+
+# Standalone Ascon-128 AEAD Helper Functions
+try:
+    import ascon as _py_ascon
+except ImportError:
+    _py_ascon = None
+
+
+def ascon_encrypt(key: bytes, nonce: bytes, plaintext: bytes, associated_data: bytes = b"") -> Tuple[bytes, bytes]:
+    """Encrypt payload using Ascon-128 AEAD and return (ciphertext, tag)."""
+    key16 = (key[:16] + b"\x00" * 16)[:16]
+    nonce16 = (nonce[:16] + b"\x00" * 16)[:16]
+    if _py_ascon is not None:
+        ct_tag = _py_ascon.encrypt(key16, nonce16, associated_data, plaintext, variant="Ascon-128")
+        return ct_tag[:-16], ct_tag[-16:]
+    elif _ascon_module is not None:
+        adapter = _AsconAdapter(key16, "ascon128")
+        ct_tag = adapter.encrypt(nonce16, plaintext, associated_data)
+        return ct_tag[:-16], ct_tag[-16:]
+    else:
+        # Fallback to AES-128-GCM if Ascon native module is unavailable
+        aesgcm = AESGCM(key16)
+        ct_tag = aesgcm.encrypt(nonce16[:12], plaintext, associated_data)
+        return ct_tag[:-16], ct_tag[-16:]
+
+
+def ascon_decrypt(key: bytes, nonce: bytes, ciphertext: bytes, tag: bytes, associated_data: bytes = b"") -> bytes:
+    """Decrypt payload using Ascon-128 AEAD."""
+    key16 = (key[:16] + b"\x00" * 16)[:16]
+    nonce16 = (nonce[:16] + b"\x00" * 16)[:16]
+    ct_tag = ciphertext + tag
+    if _py_ascon is not None:
+        return _py_ascon.decrypt(key16, nonce16, associated_data, ct_tag, variant="Ascon-128")
+    elif _ascon_module is not None:
+        adapter = _AsconAdapter(key16, "ascon128")
+        return adapter.decrypt(nonce16, ct_tag, associated_data)
+    else:
+        aesgcm = AESGCM(key16)
+        return aesgcm.decrypt(nonce16[:12], ct_tag, associated_data)
+
