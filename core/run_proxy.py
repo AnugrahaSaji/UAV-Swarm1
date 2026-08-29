@@ -20,8 +20,20 @@ import threading
 from pathlib import Path
 from typing import Callable, Dict, Optional
 
-# Dynamically add liboqs-python path if present
+# Dynamically add liboqs-python path and shared library path if present
 _home = Path.home()
+_so_paths = [
+    "/usr/local/lib",
+    "/usr/local/lib64",
+    str(_home / "liboqs" / "build" / "lib"),
+    str(_home / "quantum-safe" / "liboqs" / "build" / "lib"),
+]
+_curr_ld = os.getenv("LD_LIBRARY_PATH", "")
+for _p in _so_paths:
+    if os.path.isdir(_p) and _p not in _curr_ld:
+        _curr_ld = f"{_p}:{_curr_ld}" if _curr_ld else _p
+os.environ["LD_LIBRARY_PATH"] = _curr_ld
+
 _candidates = [
     os.getenv("LIBOQS_PYTHON_DIR"),
     _home / "liboqs-python",

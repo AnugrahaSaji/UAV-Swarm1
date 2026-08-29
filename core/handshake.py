@@ -17,13 +17,15 @@ def _try_import_oqs():
     global KeyEncapsulation, Signature
     try:
         from oqs.oqs import KeyEncapsulation, Signature
-        return True
-    except (ImportError, ModuleNotFoundError):
+        if KeyEncapsulation is not None and Signature is not None:
+            return True
+    except Exception:
         pass
     try:
         from oqs import KeyEncapsulation, Signature
-        return True
-    except (ImportError, ModuleNotFoundError):
+        if KeyEncapsulation is not None and Signature is not None:
+            return True
+    except Exception:
         pass
     try:
         import oqs
@@ -39,6 +41,19 @@ if not _try_import_oqs():
     import sys
     from pathlib import Path
     home = Path.home()
+
+    so_paths = [
+        "/usr/local/lib",
+        "/usr/local/lib64",
+        str(home / "liboqs" / "build" / "lib"),
+        str(home / "quantum-safe" / "liboqs" / "build" / "lib"),
+    ]
+    curr_ld = os.getenv("LD_LIBRARY_PATH", "")
+    for p in so_paths:
+        if os.path.isdir(p) and p not in curr_ld:
+            curr_ld = f"{p}:{curr_ld}" if curr_ld else p
+    os.environ["LD_LIBRARY_PATH"] = curr_ld
+
     candidates = [
         os.getenv("LIBOQS_PYTHON_DIR"),
         home / "liboqs-python",
