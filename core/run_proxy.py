@@ -255,16 +255,31 @@ def _require_signature_class():
 
     try:
         from oqs.oqs import Signature  # type: ignore
-    except ModuleNotFoundError as exc:  # pragma: no cover - exercised via CLI
-        if exc.name in {"oqs", "oqs.oqs"}:
-            print(
-                "Error: oqs-python is required for cryptographic operations. "
-                "Install it with 'pip install oqs-python' or activate the project environment."
-            )
-            sys.exit(1)
-        raise
+        if Signature is not None:
+            return Signature
+    except Exception:
+        pass
 
-    return Signature
+    try:
+        from oqs import Signature  # type: ignore
+        if Signature is not None:
+            return Signature
+    except Exception:
+        pass
+
+    try:
+        import oqs
+        sig_cls = getattr(oqs, "Signature", None)
+        if sig_cls is not None:
+            return sig_cls
+    except Exception:
+        pass
+
+    print(
+        "Error: oqs-python is required for cryptographic operations. "
+        "Install it with 'pip install oqs-python' or activate the project environment."
+    )
+    sys.exit(1)
 
 
 def _validate_signing_identity(
