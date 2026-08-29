@@ -715,6 +715,14 @@ def _apply_env_overrides(cfg: Dict[str, Any]) -> Dict[str, Any]:
             except ValueError:
                 raise ConfigError(f"Invalid {expected_type.__name__} value for {env_var}: {env_value}")
     
+    if not result.get("DRONE_PSK"):
+        psk_file = Path(__file__).resolve().parent.parent / "drone_psk.txt"
+        if psk_file.is_file():
+            content = psk_file.read_text(encoding="utf-8").strip()
+            if content and not content.startswith("%"):
+                result["DRONE_PSK"] = content
+                os.environ["DRONE_PSK"] = content
+
     return result
 
 
