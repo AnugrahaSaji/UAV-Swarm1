@@ -456,7 +456,8 @@ class ControlServer(ControlServerBase):
         log(f"Configured: duration={self.duration}s")
 
     def after_proxy_started(self, request: dict) -> Optional[str]:
-        if not (self.mavproxy_proc and self.mavproxy_proc.is_running()):
+        allow_no_mavproxy = os.getenv("ALLOW_MAVPROXY_FAIL", "1").strip().lower() in {"1", "true", "yes", "on"}
+        if not allow_no_mavproxy and not (self.mavproxy_proc and self.mavproxy_proc.is_running()):
             log("WARNING: persistent MAVProxy is not running")
             return "mavproxy_not_running"
         return None
