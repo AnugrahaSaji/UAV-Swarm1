@@ -65,11 +65,13 @@ class DroneProxyManager:
         except Exception:
             self._log_handle = subprocess.DEVNULL
 
+        env = os.environ.copy()
         self.proc = ManagedProcess(
             cmd=cmd,
             name=f"proxy-{suite_name}",
             stdout=self._log_handle,
             stderr=subprocess.STDOUT,
+            env=env,
         )
         if not self.proc.start():
             self._close_log_handle()
@@ -149,11 +151,13 @@ class GcsProxyManager:
         except Exception:
             self._log_handle = subprocess.DEVNULL
 
+        env = os.environ.copy()
         self.managed_proc = ManagedProcess(
             cmd=cmd,
             name=f"proxy-{suite_name}",
             stdout=self._log_handle,
             stderr=subprocess.STDOUT,
+            env=env,
         )
         if not self.managed_proc.start():
             self._close_log_handle()
