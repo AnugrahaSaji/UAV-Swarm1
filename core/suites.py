@@ -940,12 +940,27 @@ _GENERIC_AEAD_LEVEL_MAP: Dict[str, Dict[str, str]] = {
         "L3": "aesccm192",
         "L5": "aesccm256",
     },
+    "ascon": {
+        "L1": "ascon128",
+        "L3": "ascon128",
+        "L5": "ascon128",
+    },
+    "chacha20poly1305": {
+        "L1": "chacha20poly1305",
+        "L3": "chacha20poly1305",
+        "L5": "chacha20poly1305",
+    },
 }
 _GENERIC_AEAD_ALIASES: Dict[str, str] = {
     "aesgcm": "aesgcm",
     "aes-gcm": "aesgcm",
     "aesccm": "aesccm",
     "aes-ccm": "aesccm",
+    "ascon": "ascon",
+    "ascon128": "ascon",
+    "ascon-128": "ascon",
+    "chacha20poly1305": "chacha20poly1305",
+    "chacha20-poly1305": "chacha20poly1305",
 }
 
 
