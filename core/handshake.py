@@ -10,21 +10,48 @@ from core.aead import required_key_length_for_aead
 from core.suites import get_suite
 from core.logging_utils import get_logger
 
-# OQS compatibility layer - try different import styles
 KeyEncapsulation = None
 Signature = None
-try:
-    from oqs.oqs import KeyEncapsulation, Signature
-except (ImportError, ModuleNotFoundError):
+
+def _try_import_oqs():
+    global KeyEncapsulation, Signature
+    try:
+        from oqs.oqs import KeyEncapsulation, Signature
+        return True
+    except (ImportError, ModuleNotFoundError):
+        pass
     try:
         from oqs import KeyEncapsulation, Signature
+        return True
     except (ImportError, ModuleNotFoundError):
-        try:
-            import oqs
-            KeyEncapsulation = oqs.KeyEncapsulation
-            Signature = oqs.Signature
-        except (ImportError, ModuleNotFoundError, AttributeError):
-            pass
+        pass
+    try:
+        import oqs
+        KeyEncapsulation = getattr(oqs, "KeyEncapsulation", None)
+        Signature = getattr(oqs, "Signature", None)
+        if KeyEncapsulation and Signature:
+            return True
+    except Exception:
+        pass
+    return False
+
+if not _try_import_oqs():
+    import sys
+    from pathlib import Path
+    home = Path.home()
+    candidates = [
+        os.getenv("LIBOQS_PYTHON_DIR"),
+        home / "liboqs-python",
+        home / "quantum-safe" / "liboqs-python",
+        home / "UAV-Swarm1" / "liboqs-python",
+        Path("/home/swarmmain/liboqs-python"),
+        Path("/home/dev/quantum-safe/liboqs-python"),
+    ]
+    for cand in candidates:
+        if cand and Path(cand).is_dir() and str(cand) not in sys.path:
+            sys.path.insert(0, str(cand))
+            if _try_import_oqs():
+                break
 
 from core.exceptions import HandshakeError, HandshakeFormatError, HandshakeVerifyError
 
